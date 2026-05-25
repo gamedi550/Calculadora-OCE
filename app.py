@@ -49,32 +49,27 @@ def calcular_impuestos_equipaje(valor_total_usd, via_entrada, tipo_de_cambio, ta
 # --- CONFIGURACIÓN DE LA INTERFAZ MÓVIL ---
 st.set_page_config(page_title="Aduana Pro", page_icon="🧳", layout="centered")
 
-# TRUCO CSS: Oculta todo al imprimir excepto el contenedor con id="seccion-ticket"
+# OPTIMIZACIÓN CSS: Fuerza al ticket a cubrir de forma limpia toda la hoja solo al imprimir
 st.markdown("""
     <style>
     @media print {
-        html, body, div[data-testid="stAppViewContainer"], div[data-testid="stHeader"] {
+        /* Ocultar cabeceras y elementos nativos de Streamlit */
+        [data-testid="stHeader"], footer, .stButton, div.stDownloadButton {
+            display: none !important;
+        }
+        /* El ticket se superpone al 100% eliminando cualquier espacio en blanco superior */
+        #seccion-ticket {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: auto !important;
             background-color: white !important;
-        }
-        /* Oculta absolutamente todo de manera visual */
-        div[data-testid="stAppViewContainer"] * {
-            visibility: hidden;
-        }
-        /* Hace visible únicamente el ticket y lo que esté adentro de él */
-        div#seccion-ticket, div#seccion-ticket * {
-            visibility: visible;
-        }
-        /* Posiciona el ticket en la esquina superior izquierda de la hoja limpia */
-        div#seccion-ticket {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            max-width: 100% !important;
+            z-index: 9999999 !important;
             border: none !important;
-            padding: 0 !important;
-            margin: 0 !important;
             box-shadow: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
     }
     </style>
@@ -96,18 +91,19 @@ st.subheader("🔢 Calculadora de Artículos")
 if "lista_articulos" not in st.session_state:
     st.session_state.lista_articulos = pd.DataFrame([{"Artículo": "Ejemplo: Tenis / Ropa", "Precio (USD)": 120.0}])
 
+# Corrección de estabilidad: Usamos key fija para que Streamlit controle el estado sin congelarse
 df_articulos = st.data_editor(
     st.session_state.lista_articulos,
     num_rows="dynamic",  
     use_container_width=True,
+    key="editor_articulos",
     column_config={
         "Artículo": st.column_config.TextColumn("Descripción", required=True),
         "Precio (USD)": st.column_config.NumberColumn("Valor ($ USD)", min_value=0.0, format="$%d", required=True)
     }
 )
-st.session_state.lista_articulos = df_articulos
-valor_total_usd = df_articulos["Precio (USD)"].sum()
 
+valor_total_usd = df_articulos["Precio (USD)"].sum()
 st.metric(label="Valor Total de tu Compra", value=f"${valor_total_usd:,.2f} USD")
 
 st.divider()
@@ -134,7 +130,6 @@ if st.session_state.mostrar_resultados:
     
     st.subheader("📋 Resultado del Cálculo")
     
-    # Generar filas dinámicas de artículos para la vista de ticket HTML
     html_filas_articulos = ""
     for _, fila in df_articulos.iterrows():
         html_filas_articulos += f"<tr><td style='padding: 4px 0;'>• {fila['Artículo']}</td><td style='text-align: right; padding: 4px 0;'>${fila['Precio (USD)']:,.2f} USD</td></tr>"
@@ -142,7 +137,7 @@ if st.session_state.mostrar_resultados:
     fecha_actual = datetime.now().strftime("%Y-%m-%d %H:%M")
     nombre_ticket = nombre_usuario.strip() if nombre_usuario.strip() else "No especificado"
 
-    # --- TICKET VISUAL EN PANTALLA (Y EXCLUSIVO DE IMPRESIÓN) ---
+    # Estructura limpia del ticket visual
     ticket_html = f"""
     <div id="seccion-ticket" style="
         font-family: Arial, sans-serif; 
@@ -191,10 +186,9 @@ if st.session_state.mostrar_resultados:
     </div>
     """
     
-    # Mostrar el ticket directamente renderizado en la interfaz de Streamlit
     st.markdown(ticket_html, unsafe_allow_html=True)
     
-    # Generar el bloque de texto plano para la descarga alternativa (.txt)
+    # Respaldo en texto plano para descarga
     texto_ticket_txt = (
         f"========================================\n"
         f"          TICKET DE ADUANA PRO          \n"
