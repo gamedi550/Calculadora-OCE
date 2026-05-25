@@ -49,30 +49,28 @@ def calcular_impuestos_equipaje(valor_total_usd, via_entrada, tipo_de_cambio, ta
 # --- CONFIGURACIÓN DE LA INTERFAZ MÓVIL ---
 st.set_page_config(page_title="Aduana Pro", page_icon="🧳", layout="centered")
 
-# OPTIMIZACIÓN CSS: Fuerza al ticket a cubrir de forma limpia toda la hoja solo al imprimir
+# Estilos CSS globales de impresión alineados totalmente a la izquierda (sin sangría de Python)
 st.markdown("""
-    <style>
-    @media print {
-        /* Ocultar cabeceras y elementos nativos de Streamlit */
-        [data-testid="stHeader"], footer, .stButton, div.stDownloadButton {
-            display: none !important;
-        }
-        /* El ticket se superpone al 100% eliminando cualquier espacio en blanco superior */
-        #seccion-ticket {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100% !important;
-            height: auto !important;
-            background-color: white !important;
-            z-index: 9999999 !important;
-            border: none !important;
-            box-shadow: none !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
+<style>
+@media print {
+    [data-testid="stHeader"], footer, .stButton, div.stDownloadButton {
+        display: none !important;
     }
-    </style>
+    #seccion-ticket {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        background-color: white !important;
+        z-index: 9999999 !important;
+        border: none !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+}
+</style>
 """, unsafe_allow_html=True)
 
 st.title("🧳 Aduana Pro")
@@ -91,7 +89,6 @@ st.subheader("🔢 Calculadora de Artículos")
 if "lista_articulos" not in st.session_state:
     st.session_state.lista_articulos = pd.DataFrame([{"Artículo": "Ejemplo: Tenis / Ropa", "Precio (USD)": 120.0}])
 
-# Corrección de estabilidad: Usamos key fija para que Streamlit controle el estado sin congelarse
 df_articulos = st.data_editor(
     st.session_state.lista_articulos,
     num_rows="dynamic",  
@@ -137,58 +134,41 @@ if st.session_state.mostrar_resultados:
     fecha_actual = datetime.now().strftime("%Y-%m-%d %H:%M")
     nombre_ticket = nombre_usuario.strip() if nombre_usuario.strip() else "No especificado"
 
-    # Estructura limpia del ticket visual
+    # CRÍTICO: Este bloque HTML se movió al extremo izquierdo para evitar el bug de interpretación de Markdown
     ticket_html = f"""
-    <div id="seccion-ticket" style="
-        font-family: Arial, sans-serif; 
-        max-width: 450px; 
-        margin: 15px auto; 
-        padding: 20px; 
-        border: 1px dashed #bbb; 
-        border-radius: 8px; 
-        background-color: #ffffff; 
-        color: #000000;
-        box-shadow: 0px 2px 5px rgba(0,0,0,0.05);">
-        
-        <h3 style="text-align: center; margin: 0 0 5px 0; font-size: 18px; color: #000;">TICKET DE ADUANA PRO</h3>
-        <p style="text-align: center; margin: 0 0 15px 0; font-size: 11px; color: #666;">{fecha_actual}</p>
-        
-        <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
-        
-        <p style="margin: 5px 0; font-size: 13px;"><b>Pasajero/Familia:</b> {nombre_ticket}</p>
-        <p style="margin: 5px 0; font-size: 13px;"><b>Pasajeros en Grupo:</b> {num_pasajeros}</p>
-        <p style="margin: 5px 0; font-size: 13px;"><b>Vía de Entrada:</b> {via}</p>
-        <p style="margin: 5px 0; font-size: 13px;"><b>Tipo de Cambio:</b> ${tipo_cambio:.2f} MXN</p>
-        
-        <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
-        <h4 style="margin: 0 0 5px 0; font-size: 13px;">DESGLOSE DE MERCANCÍA:</h4>
-        
-        <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
-            {html_filas_articulos}
-        </table>
-        
-        <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
-        
-        <table style="width: 100%; font-size: 13px; line-height: 1.6;">
-            <tr><td>Suma Total Artículos:</td><td style="text-align: right;">${valor_total_usd:,.2f} USD</td></tr>
-            <tr><td>Franquicia Individual:</td><td style="text-align: right;">${res['Franquicia_Individual']:.2f} USD</td></tr>
-            <tr><td><b>Franquicia Total ({num_pasajeros} pax):</b></td><td style="text-align: right;"><b>-${res['Franquicia_Total']:.2f} USD</b></td></tr>
-            <tr><td>Excedente Gravable:</td><td style="text-align: right;">${res['Excedente_USD']:,.2f} USD</td></tr>
-            <tr><td>Tasa de Impuesto:</td><td style="text-align: right;">{res['Tasa']}</td></tr>
-            <tr style="font-size: 16px; font-weight: bold; border-top: 1px solid #000;">
-                <td style="padding-top: 8px; color: #000;">TOTAL A PAGAR:</td>
-                <td style="text-align: right; padding-top: 8px; color: #000;">${res['Impuesto_MXN']:,.2f} MXN</td>
-            </tr>
-        </table>
-        
-        <div style="border-top: 1px dashed #000; margin: 15px 0 5px 0;"></div>
-        <p style="font-size: 11px; text-align: center; margin: 0; font-style: italic; color: #444;">{res['Mensaje']}</p>
-    </div>
-    """
+<div id="seccion-ticket" style="font-family: Arial, sans-serif; max-width: 450px; margin: 15px auto; padding: 20px; border: 1px dashed #bbb; border-radius: 8px; background-color: #ffffff; color: #000000; box-shadow: 0px 2px 5px rgba(0,0,0,0.05);">
+    <h3 style="text-align: center; margin: 0 0 5px 0; font-size: 18px; color: #000;">TICKET DE ADUANA PRO</h3>
+    <p style="text-align: center; margin: 0 0 15px 0; font-size: 11px; color: #666;">{fecha_actual}</p>
+    <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
+    <p style="margin: 5px 0; font-size: 13px;"><b>Pasajero/Familia:</b> {nombre_ticket}</p>
+    <p style="margin: 5px 0; font-size: 13px;"><b>Pasajeros en Grupo:</b> {num_pasajeros}</p>
+    <p style="margin: 5px 0; font-size: 13px;"><b>Vía de Entrada:</b> {via}</p>
+    <p style="margin: 5px 0; font-size: 13px;"><b>Tipo de Cambio:</b> ${tipo_cambio:.2f} MXN</p>
+    <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
+    <h4 style="margin: 0 0 5px 0; font-size: 13px;">DESGLOSE DE MERCANCÍA:</h4>
+    <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+        {html_filas_articulos}
+    </table>
+    <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
+    <table style="width: 100%; font-size: 13px; line-height: 1.6;">
+        <tr><td>Suma Total Artículos:</td><td style="text-align: right;">${valor_total_usd:,.2f} USD</td></tr>
+        <tr><td>Franquicia Individual:</td><td style="text-align: right;">${res['Franquicia_Individual']:.2f} USD</td></tr>
+        <tr><td><b>Franquicia Total ({num_pasajeros} pax):</b></td><td style="text-align: right;"><b>-${res['Franquicia_Total']:.2f} USD</b></td></tr>
+        <tr><td>Excedente Gravable:</td><td style="text-align: right;">${res['Excedente_USD']:,.2f} USD</td></tr>
+        <tr><td>Tasa de Impuesto:</td><td style="text-align: right;">{res['Tasa']}</td></tr>
+        <tr style="font-size: 16px; font-weight: bold; border-top: 1px solid #000;">
+            <td style="padding-top: 8px; color: #000;">TOTAL A PAGAR:</td>
+            <td style="text-align: right; padding-top: 8px; color: #000;">${res['Impuesto_MXN']:,.2f} MXN</td>
+        </tr>
+    </table>
+    <div style="border-top: 1px dashed #000; margin: 15px 0 5px 0;"></div>
+    <p style="font-size: 11px; text-align: center; margin: 0; font-style: italic; color: #444;">{res['Mensaje']}</p>
+</div>
+"""
     
     st.markdown(ticket_html, unsafe_allow_html=True)
     
-    # Respaldo en texto plano para descarga
+    # Bloque de respaldo para descarga en TXT
     texto_ticket_txt = (
         f"========================================\n"
         f"          TICKET DE ADUANA PRO          \n"
