@@ -5,6 +5,79 @@ from datetime import datetime
 import pytz
 import urllib.parse
 
+# --- 1. CONFIGURACIÓN DE LA PÁGINA (Debe ser lo primero siempre) ---
+st.set_page_config(page_title="Control Aduanal México", page_icon="🧳", layout="centered")
+
+# --- 2. CONFIGURACIÓN DE TU LINK OFICIAL ---
+# IMPORTANTE: Coloca aquí el link real de tu app de Streamlit Cloud para que el QR funcione en producción
+LINK_DE_TU_APP = "https://bdnb7l.streamlit.app" 
+
+
+# --- 3. DETECTOR DE ESCANEO DE QR (Modo de descarga móvil) ---
+if "descargar_ticket" in st.query_params:
+    ciudad = st.query_params.get("ciudad", "Aduana")
+    pasajero = st.query_params.get("pasajero", "Pasajero")
+    fecha = st.query_params.get("fecha", "")
+    total_usd = st.query_params.get("total_usd", "0.00")
+    franquicia_total = st.query_params.get("franquicia_total", "0.00")
+    excedente = st.query_params.get("excedente", "0.00")
+    tasa = st.query_params.get("tasa", "0%")
+    impuesto_mxn = st.query_params.get("impuesto_mxn", "0.00")
+    num_pax = st.query_params.get("pax", "1")
+    via = st.query_params.get("via", "Terrestre")
+    mensaje = st.query_params.get("mensaje", "")
+    arts_raw = st.query_params.get("arts", "")
+
+    st.success("✅ ¡Código QR Escaneado Correctamente!")
+    st.subheader("📥 Guarda tu Ticket Aduanal")
+    st.write(f"Hola **{pasajero}**, pulsa el botón de abajo para descargar el comprobante en tu dispositivo.")
+    
+    # Reconstrucción de los artículos guardados encriptados en la URL
+    texto_articulos = ""
+    if arts_raw:
+        for art in arts_raw.split("||"):
+            if "___" in art:
+                nombre_art, precio_art = art.split("___")
+                texto_articulos += f"- {nombre_art}: ${precio_art} USD\n"
+
+    # Plantilla limpia del ticket descargable
+    texto_ticket_remoto = (
+        f"========================================\n"
+        f"     TICKET ADUANA {ciudad.upper()}\n"
+        f"========================================\n"
+        f"Fecha local: {fecha}\n"
+        f"Pasajero/Familia: {pasajero}\n"
+        f"Total de Pasajeros: {num_pax}\n"
+        f"Vía de Entrada: {via}\n"
+        f"----------------------------------------\n"
+        f"ARTÍCULOS DETALLADOS:\n"
+        f"{texto_articulos}"
+        f"----------------------------------------\n"
+        f"Suma Total Artículos: ${total_usd} USD\n"
+        f"Franquicia Total ({num_pax} pasajeros): ${franquicia_total} USD\n"
+        f"Excedente Gravable:    ${excedente} USD\n"
+        f"Tasa Aplicada:         {tasa}\n"
+        f"----------------------------------------\n"
+        f"TOTAL A PAGAR:         ${impuesto_mxn} MXN\n"
+        f"========================================\n"
+        f"Nota: {mensaje}\n"
+    )
+    
+    # Botón prioritario de descarga móvil
+    st.download_button(
+        label="💾 CLIC AQUÍ PARA DESCARGAR TICKET (.TXT)",
+        data=texto_ticket_remoto,
+        file_name=f"Ticket_{ciudad.replace(' ', '_')}_{pasajero.replace(' ', '_')}.txt",
+        mime="text/plain",
+        use_container_width=True
+    )
+    
+    with st.expander("👀 Ver vista previa del texto", expanded=True):
+        st.code(texto_ticket_remoto, language="text")
+    st.stop()
+
+
+# --- 4. LÓGICA HABITUAL DEL SISTEMA ---
 def calcular_impuestos_equipaje(valor_total_usd, via_entrada, tipo_de_cambio, tasa_global_pct, num_pasajeros, es_periodo_paisano=False):
     if via_entrada == "Aérea / Marítima":
         franquicia_individual = 500.0
@@ -48,7 +121,6 @@ def calcular_impuestos_equipaje(valor_total_usd, via_entrada, tipo_de_cambio, ta
         "Mensaje": mensaje
     }
 
-# --- CONFIGURACIÓN DE ZONAS HORARIAS POR CIUDAD ---
 CIUDADES_ADUANA = {
     "Ciudad Juárez": "America/Ciudad_Juarez",
     "Tijuana": "America/Tijuana",
@@ -56,9 +128,6 @@ CIUDADES_ADUANA = {
     "Ciudad de México (AICM)": "America/Mexico_City",
     "Cancún": "America/Cancun"
 }
-
-# --- CONFIGURACIÓN DE LA INTERFAZ MÓVIL ---
-st.set_page_config(page_title="Control Aduanal México", page_icon="🧳", layout="centered")
 
 # REGLAS DE IMPRESIÓN ULTRA ESTRICTAS
 st.markdown("""
@@ -114,14 +183,12 @@ ciudad_seleccionada = st.selectbox(
 st.title(f"🧳 Aduana {ciudad_seleccionada}")
 st.write("Calculadora de equipaje familiar con franquicia acumulada.")
 
-# --- 1. CONFIGURACIÓN AVANZADA ---
 with st.expander("⚙️ Configuración de Tasas e Impuestos", expanded=False):
     tasa_impuesto = st.number_input("Tasa Global de Impuesto (%)", min_value=0.0, max_value=100.0, value=16.0, step=0.5)
     tipo_cambio = st.number_input("Tipo de cambio (MXN por USD)", min_value=1.0, step=0.05, value=18.50)
 
 st.divider()
 
-# --- 2. CALCULADORA INTERACTIVA DE ARTÍCULOS ---
 st.subheader("🔢 Calculadora de Artículos")
 
 if "lista_articulos" not in st.session_state:
@@ -143,7 +210,6 @@ st.metric(label="Valor Total de tu Compra", value=f"${valor_total_usd:,.2f} USD"
 
 st.divider()
 
-# --- 3. DATOS DEL VIAJE Y PASAJEROS ---
 st.subheader("📋 Datos del Viajero / Grupo")
 nombre_usuario = st.text_input("Nombre del Pasajero / Familia", value="", placeholder="Ej. Familia Pérez")
 num_pasajeros = st.number_input("Número de pasajeros viajando juntos", min_value=1, max_value=20, value=1, step=1)
@@ -154,14 +220,12 @@ paisano = st.toggle("¿Aplica Programa Paisano?") if via == "Terrestre" else Fal
 
 st.divider()
 
-# --- 4. CONTROL DE EJECUCIÓN ---
 if "mostrar_resultados" not in st.session_state:
     st.session_state.mostrar_resultados = False
 
 if st.button("Calcular Impuestos Totales", type="primary", use_container_width=True):
     st.session_state.mostrar_resultados = True
 
-# --- 5. RESULTADOS E IMPRESIÓN ---
 if st.session_state.mostrar_resultados:
     res = calcular_impuestos_equipaje(valor_total_usd, via, tipo_cambio, tasa_impuesto, num_pasajeros, paisano)
     
@@ -175,18 +239,31 @@ if st.session_state.mostrar_resultados:
     fecha_actual = datetime.now(zona_horaria_objeto).strftime("%Y-%m-%d %H:%M")
     nombre_ticket = nombre_usuario.strip() if nombre_usuario.strip() else "No especificado"
 
-    # Generación de contenido para el QR
-    texto_para_qr = (
-        f"ADUANA {ciudad_seleccionada.upper()}\n"
-        f"Fecha: {fecha_actual}\n"
-        f"Pasajero: {nombre_ticket}\n"
-        f"Total Artículos: ${valor_total_usd:,.2f} USD\n"
-        f"TOTAL A PAGAR: ${res['Impuesto_MXN']:,.2f} MXN"
-    )
-    qr_url_encoded = urllib.parse.quote(texto_para_qr)
-    qr_image_url = f"https://api.qrserver.com/v1/create-qr-code/?size=130x130&data={qr_url_encoded}"
+    # --- COMPRESIÓN DE DATOS PARA LA URL DEL QR ---
+    lista_art = [f"{row['Artículo']}___{row['Precio (USD)']}" for _, row in df_articulos.iterrows()]
+    articulos_param = "||".join(lista_art)
 
-    # NOTA: Todo este string HTML debe mantenerse pegado al borde izquierdo para que Streamlit lo procese bien
+    parametros_qr = {
+        "descargar_ticket": "true",
+        "ciudad": ciudad_seleccionada,
+        "pasajero": nombre_ticket,
+        "fecha": fecha_actual,
+        "total_usd": f"{valor_total_usd:,.2f}",
+        "franquicia_total": f"{res['Franquicia_Total']:.2f}",
+        "excedente": f"{res['Excedente_USD']:,.2f}",
+        "tasa": res['Tasa'],
+        "impuesto_mxn": f"{res['Impuesto_MXN']:,.2f}",
+        "pax": str(num_pasajeros),
+        "via": via,
+        "mensaje": res['Mensaje'],
+        "arts": articulos_param
+    }
+    
+    # Construcción final del enlace inteligente para descarga remota
+    url_final_qr = f"{LINK_DE_TU_APP}/?{urllib.parse.urlencode(parametros_qr)}"
+    qr_url_encoded = urllib.parse.quote(url_final_qr)
+    qr_image_url = f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={qr_url_encoded}"
+
     ticket_html = f"""<div id="seccion-ticket" style="font-family: Arial, sans-serif; max-width: 450px; margin: 15px auto; padding: 20px; border: 1px dashed #bbb; border-radius: 8px; background-color: #ffffff; color: #000000; box-shadow: 0px 2px 5px rgba(0,0,0,0.05);">
 <h3 style="text-align: center; margin: 0 0 5px 0; font-size: 16px; color: #000; font-weight: bold;">TICKET ADUANA {ciudad_seleccionada.upper()}</h3>
 <p style="text-align: center; margin: 0 0 15px 0; font-size: 11px; color: #666;">{fecha_actual}</p>
@@ -213,8 +290,8 @@ if st.session_state.mostrar_resultados:
 </tr>
 </table>
 <div style="text-align: center; margin: 20px 0 10px 0;">
-<img src="{qr_image_url}" alt="Código QR de Validación" style="border: 1px solid #ddd; padding: 5px; background-color: #fff; width: 130px; height: 130px;" />
-<p style="margin: 5px 0 0 0; font-size: 10px; color: #444; font-style: italic;">Escanea para validar el desglose</p>
+<img src="{qr_image_url}" alt="Código QR de Validación" style="border: 1px solid #ddd; padding: 5px; background-color: #fff; width: 150px; height: 150px;" />
+<p style="margin: 5px 0 0 0; font-size: 10px; color: #444; font-style: italic;">Escanea para descargar el ticket en tu celular</p>
 </div>
 <div style="border-top: 1px dashed #000; margin: 10px 0 5px 0;"></div>
 <p style="font-size: 11px; text-align: center; margin: 0; font-style: italic; color: #222;">{res['Mensaje']}</p>
@@ -222,7 +299,7 @@ if st.session_state.mostrar_resultados:
     
     st.markdown(ticket_html, unsafe_allow_html=True)
     
-    # Texto plano de respaldo para descarga
+    # Texto de respaldo para la descarga manual en PC
     texto_ticket_txt = (
         f"========================================\n"
         f"     TICKET ADUANA {ciudad_seleccionada.upper()}\n"
