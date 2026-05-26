@@ -171,7 +171,7 @@ if st.session_state.mostrar_resultados:
     <table style="width: 100%; font-size: 13px; line-height: 1.6; color: #000;">
         <tr><td>Suma Total Artículos:</td><td style="text-align: right;">${valor_total_usd:,.2f} USD</td></tr>
         <tr><td>Franquicia Individual:</td><td style="text-align: right;">${res['Franquicia_Individual']:.2f} USD</td></tr>
-        <tr><td><b>Franquicia Total ({num_pasajeros} pax):</b></td><td style="text-align: right;"><b>-${res['Franquicia_Total']:.2f} USD</b></td></tr>
+        <tr><td><b>Franquicia Total ({num_pasajeros} pasajeros):</b></td><td style="text-align: right;"><b>-${res['Franquicia_Total']:.2f} USD</b></td></tr>
         <tr><td>Excedente Gravable:</td><td style="text-align: right;">${res['Excedente_USD']:,.2f} USD</td></tr>
         <tr><td>Tasa de Impuesto:</td><td style="text-align: right;">{res['Tasa']}</td></tr>
         <tr style="font-size: 16px; font-weight: bold; border-top: 1px solid #000;">
@@ -205,7 +205,7 @@ if st.session_state.mostrar_resultados:
     texto_ticket_txt += (
         f"----------------------------------------\n"
         f"Suma Total Artículos: ${valor_total_usd:,.2f} USD\n"
-        f"Franquicia Total ({num_pasajeros} pax): ${res['Franquicia_Total']:.2f} USD\n"
+        f"Franquicia Total ({num_pasajeros} pasajeros): ${res['Franquicia_Total']:.2f} USD\n"
         f"Excedente Gravable:    ${res['Excedente_USD']:,.2f} USD\n"
         f"Tasa Aplicada:         {res['Tasa']}\n"
         f"----------------------------------------\n"
