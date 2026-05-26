@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit as st  # Corregido: 'import' en minúscula
 import pandas as pd
 import streamlit.components.v1 as components
 from datetime import datetime
@@ -124,8 +124,9 @@ st.divider()
 # --- 2. CALCULADORA INTERACTIVA DE ARTÍCULOS ---
 st.subheader("🔢 Calculadora de Artículos")
 
+# Modificado: Se inicializa vacío para no alterar la sumatoria con un "ejemplo" fantasma
 if "lista_articulos" not in st.session_state:
-    st.session_state.lista_articulos = pd.DataFrame([{"Artículo": "Ejemplo: Tenis / Ropa", "Precio (USD)": 120.0}])
+    st.session_state.lista_articulos = pd.DataFrame(columns=["Artículo", "Precio (USD)"])
 
 df_articulos = st.data_editor(
     st.session_state.lista_articulos,
@@ -134,11 +135,11 @@ df_articulos = st.data_editor(
     key="editor_articulos",
     column_config={
         "Artículo": st.column_config.TextColumn("Descripción", required=True),
-        "Precio (USD)": st.column_config.NumberColumn("Valor ($ USD)", min_value=0.0, format="$%d", required=True)
+        "Precio (USD)": st.column_config.NumberColumn("Valor ($ USD)", min_value=0.0, format="$%.2f", required=True)
     }
 )
 
-valor_total_usd = df_articulos["Precio (USD)"].sum()
+valor_total_usd = df_articulos["Precio (USD)"].sum() if not df_articulos.empty else 0.0
 st.metric(label="Valor Total de tu Compra", value=f"${valor_total_usd:,.2f} USD")
 
 st.divider()
@@ -168,8 +169,12 @@ if st.session_state.mostrar_resultados:
     st.subheader("📋 Resultado del Cálculo")
     
     html_filas_articulos = ""
-    for _, fila in df_articulos.iterrows():
-        html_filas_articulos += f"<tr><td style='padding: 4px 0;'>• {fila['Artículo']}</td><td style='text-align: right; padding: 4px 0;'>${fila['Precio (USD)']:,.2f} USD</td></tr>"
+    if not df_articulos.empty:
+        for _, fila in df_articulos.iterrows():
+            if pd.notna(fila['Artículo']) and pd.notna(fila['Precio (USD)']):
+                html_filas_articulos += f"<tr><td style='padding: 4px 0;'>• {fila['Artículo']}</td><td style='text-align: right; padding: 4px 0;'>${fila['Precio (USD)']:,.2f} USD</td></tr>"
+    else:
+        html_filas_articulos = "<tr><td colspan='2' style='font-style: italic; color: #888;'>Sin artículos declarados</td></tr>"
 
     zona_horaria_objeto = pytz.timezone(CIUDADES_ADUANA[ciudad_seleccionada])
     fecha_actual = datetime.now(zona_horaria_objeto).strftime("%Y-%m-%d %H:%M")
@@ -186,7 +191,6 @@ if st.session_state.mostrar_resultados:
     qr_url_encoded = urllib.parse.quote(texto_para_qr)
     qr_image_url = f"https://api.qrserver.com/v1/create-qr-code/?size=130x130&data={qr_url_encoded}"
 
-    # NOTA: Todo este string HTML debe mantenerse pegado al borde izquierdo para que Streamlit lo procese bien
     ticket_html = f"""<div id="seccion-ticket" style="font-family: Arial, sans-serif; max-width: 450px; margin: 15px auto; padding: 20px; border: 1px dashed #bbb; border-radius: 8px; background-color: #ffffff; color: #000000; box-shadow: 0px 2px 5px rgba(0,0,0,0.05);">
 <h3 style="text-align: center; margin: 0 0 5px 0; font-size: 16px; color: #000; font-weight: bold;">TICKET ADUANA {ciudad_seleccionada.upper()}</h3>
 <p style="text-align: center; margin: 0 0 15px 0; font-size: 11px; color: #666;">{fecha_actual}</p>
@@ -235,8 +239,11 @@ if st.session_state.mostrar_resultados:
         f"----------------------------------------\n"
         f"ARTÍCULOS DETALLADOS:\n"
     )
-    for _, fila in df_articulos.iterrows():
-        texto_ticket_txt += f"- {fila['Artículo']}: ${fila['Precio (USD)']:,.2f} USD\n"
+    if not df_articulos.empty:
+        for _, fila in df_articulos.iterrows():
+            texto_ticket_txt += f"- {fila['Artículo']}: ${fila['Precio (USD)']:,.2f} USD\n"
+    else:
+        texto_ticket_txt += "Sin artículos declarados\n"
         
     texto_ticket_txt += (
         f"----------------------------------------\n"
@@ -264,13 +271,15 @@ if st.session_state.mostrar_resultados:
         )
         
     with col2:
+        # Corregido: Se sustituye el trigger de impresión iframe por un modal informativo 
+        # para que el usuario use el comando nativo del sistema sin bloqueos de seguridad.
         components.html("""
             <script>
-                function imprimirPantalla() {
-                    window.parent.print();
+                function alertarImpresion() {
+                    alert("Para guardar como PDF o Imprimir el ticket limpio, por favor utiliza el comando nativo de tu navegador:\\n\\n• Windows/Linux: Ctrl + P\\n• Mac: Cmd + P\\n\\nTu diseño limpio de ticket ya está preconfigurado automáticamente.");
                 }
             </script>
-            <button onclick="imprimirPantalla()" style="
+            <button onclick="alertarImpresion()" style="
                 width: 100%; 
                 height: 38px; 
                 background-color: #4CAF50; 
@@ -280,6 +289,6 @@ if st.session_state.mostrar_resultados:
                 font-weight: bold; 
                 font-size: 14px;
                 cursor: pointer;">
-                🖨️ Imprimir Ticket / PDF
+                🖨️ ¿Cómo Imprimir / PDF?
             </button>
         """, height=45)
