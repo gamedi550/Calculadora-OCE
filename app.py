@@ -156,8 +156,9 @@ if "lista_articulos" not in st.session_state:
         {"Artículo": "Electrodomésticos", "Precio (USD)": 0.0},
         {"Artículo": "Muebles", "Precio (USD)": 0.0},
         {"Artículo": "Herramientas", "Precio (USD)": 0.0},
-        {"Artículo": "Productos alimenticios", "Precio (USD)": 0.0}
-    ], index=[1, 2, 3, 4, 5])
+        {"Artículo": "Productos alimenticios", "Precio (USD)": 0.0},
+        {"Artículo": "Aparatos electrónicos portátiles", "Precio (USD)": 0.0}
+    ], index=[1, 2, 3, 4, 5, 6])
 
 df_articulos = st.data_editor(
     st.session_state.lista_articulos,
