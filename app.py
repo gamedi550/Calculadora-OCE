@@ -4,7 +4,7 @@ import streamlit.components.v1 as components
 from datetime import datetime
 import pytz
 import urllib.parse
-import base64  # Necesario para empaquetar el HTML de forma segura hacia el móvil
+import base64
 
 def calcular_impuestos_equipaje(valor_total_usd, via_entrada, tipo_de_cambio, tasa_global_pct, num_pasajeros, es_periodo_paisano=False):
     if via_entrada == "Aérea / Marítima":
@@ -14,12 +14,15 @@ def calcular_impuestos_equipaje(valor_total_usd, via_entrada, tipo_de_cambio, ta
     
     franquicia_total_usd = franquicia_individual * num_pasajeros
     
+    # --- CORRECCIÓN AQUÍ: Se añadieron las llaves 'Tasa' y 'Excedente_MXN' para evitar el KeyError ---
     if valor_total_usd <= franquicia_total_usd:
         return {
             "Estatus": "Libre de impuestos",
             "Franquicia_Individual": franquicia_individual,
             "Franquicia_Total": franquicia_total_usd,
             "Excedente_USD": 0.0,
+            "Excedente_MXN": 0.0,
+            "Tasa": f"{tasa_global_pct}%",
             "Impuesto_MXN": 0.0,
             "Mensaje": "✅ ¡Excelente! La mercancía entra dentro de la franquicia acumulada de tu grupo."
         }
@@ -148,7 +151,6 @@ if st.session_state.mostrar_resultados:
     qr_url_encoded = urllib.parse.quote(texto_para_qr)
     qr_image_url = f"https://api.qrserver.com/v1/create-qr-code/?size=130x130&data={qr_url_encoded}"
 
-    # Estructura del Ticket Visual en App
     ticket_html = f"""<div id="seccion-ticket" style="font-family: Arial, sans-serif; max-width: 450px; margin: 15px auto; padding: 20px; border: 1px dashed #bbb; border-radius: 8px; background-color: #ffffff; color: #000000; box-shadow: 0px 2px 5px rgba(0,0,0,0.05);">
 <h3 style="text-align: center; margin: 0 0 5px 0; font-size: 16px; color: #000; font-weight: bold;">TICKET ADUANA {ciudad_seleccionada.upper()}</h3>
 <p style="text-align: center; margin: 0 0 15px 0; font-size: 11px; color: #666;">{fecha_actual}</p>
@@ -184,7 +186,7 @@ if st.session_state.mostrar_resultados:
     
     st.markdown(ticket_html, unsafe_allow_html=True)
     
-    # --- PREPARACIÓN DEL CONTENIDO EXCLUSIVO DE IMPRESIÓN (Pestaña nueva) ---
+    # --- PREPARACIÓN DEL CONTENIDO EXCLUSIVO DE IMPRESIÓN ---
     html_impresion_completo = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -209,7 +211,6 @@ if st.session_state.mostrar_resultados:
     <button class="btn-imprimir no-print" onclick="window.print()">📥 CLIC AQUÍ PARA IMPRIMIR O GUARDAR PDF</button>
     {ticket_html}
     <script>
-        // Auto-disparar impresión al cargar en la mayoría de los móviles modernos
         window.onload = function() {{
             setTimeout(function() {{ window.print(); }}, 500);
         }};
@@ -217,10 +218,9 @@ if st.session_state.mostrar_resultados:
 </body>
 </html>"""
 
-    # Codificamos a Base64 para pasar el bloque HTML de forma segura a JavaScript
     b64_html = base64.b64encode(html_impresion_completo.encode('utf-8')).decode('utf-8')
 
-    # Texto plano de respaldo para descarga (.txt)
+    # Texto plano de respaldo
     texto_ticket_txt = (
         f"========================================\n"
         f"     TICKET ADUANA {ciudad_seleccionada.upper()}\n"
@@ -265,7 +265,6 @@ if st.session_state.mostrar_resultados:
         )
         
     with col2:
-        # Script que recibe el Base64, abre la pestaña limpia y ejecuta el motor nativo Android/iOS
         components.html(f"""
             <script>
                 function abrirTicketMovil() {{
