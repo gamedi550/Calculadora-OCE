@@ -76,6 +76,46 @@ CIUDADES_ADUANA = {
 # --- CONFIGURACIÓN DE LA INTERFAZ ---
 st.set_page_config(page_title="Control Aduanal México", page_icon="🧳", layout="centered")
 
+# ==========================================
+# --- GUÍA DE CONSULTA (BARRA LATERAL) ---
+# ==========================================
+with st.sidebar:
+    st.header("📖 Guía del Viajero")
+    st.write("Usa esta guía rápida para saber qué artículos **NO** debes pagar ni meter en la calculadora.")
+    
+    with st.expander("🟢 Equipaje Personal Libre de Impuesto", expanded=True):
+        st.markdown("""
+        Los siguientes artículos son considerados de uso personal y **entran gratis**:
+        * **Ropa, calzado y productos de aseo** personal en cantidades acordes a la duración del viaje.
+        * **2 cámaras** fotográficas o de videograbación y sus accesorios.
+        * **2 teléfonos celulares** o radiocontactores.
+        * **1 Agenda electrónica** o computadora portátil (Laptop).
+        * **1 aparato portátil** para el grabado o reproducción de sonido (o reproductor digital).
+        * **5 juguetes** portátiles y una consola de videojuegos con 5 videojuegos.
+        * **Libros, revistas** y documentos impresos.
+        * **Medicamentos** de uso personal (con su receta médica si son psicotrópicos).
+        * Maletas o baúles necesarios para el traslado del equipaje.
+        """)
+        
+    with st.expander("🚗 Reglas de Franquicia", expanded=False):
+        st.markdown("""
+        La franquicia es el valor permitido de mercancía adicional a tu equipaje personal:
+        * **Vía Aérea o Marítima:** $500 USD por pasajero todo el año.
+        * **Vía Terrestre:** $300 USD por pasajero.
+        * **Programa Héroes Paisanos:** Sube a $500 USD por vía terrestre en temporadas vacacionales oficiales.
+        
+        *Nota: Las franquicias de una misma familia son **acumulables** si viajan juntos en el mismo medio de transporte.*
+        """)
+        
+    st.divider()
+    st.markdown("### 🔗 Enlaces Oficiales")
+    st.markdown("[📜 Portal de Aduanas - SAT](https://www.sat.gob.mx/)")
+    st.markdown("[🇲🇽 Instituto Nacional de Migración](https://www.gob.mx/inm)")
+
+# ==========================================
+# --- CONTENIDO PRINCIPAL DE LA APP ---
+# ==========================================
+
 # Selector de ciudad principal
 st.subheader("📍 Ubicación de Ingreso")
 ciudad_seleccionada = st.selectbox(
@@ -291,7 +331,6 @@ if st.session_state.mostrar_resultados:
             <script>
                 function abrirTicketMovil() {{
                     var b64Data = "{b64_html}";
-                    // Decodificación UTF-8 compatible con acentos y eñes de forma moderna
                     var strData = atob(b64Data);
                     var charCodeArray = new Uint8Array(strData.length);
                     for (var i = 0; i < strData.length; i++) {{
