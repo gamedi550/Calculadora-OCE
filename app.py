@@ -76,35 +76,45 @@ CIUDADES_ADUANA = {
 # --- CONFIGURACIÓN DE LA INTERFAZ ---
 st.set_page_config(page_title="Control Aduanal México", page_icon="🧳", layout="centered")
 
-# ==========================================
-# --- GUÍA DE CONSULTA (BARRA LATERAL) ---
-# ==========================================
+# ====================================================
+# --- GUÍA DE CONSULTA ADUANAL (BARRA LATERAL) ---
+# ====================================================
 with st.sidebar:
-    st.header("📖 Guía del Viajero")
-    st.write("Usa esta guía rápida para saber qué artículos **NO** debes pagar ni meter en la calculadora.")
+    st.header("📖 Guía Oficial del Viajero")
+    st.write("Consulta qué artículos se consideran **Equipaje Personal** (entran gratis) y cómo funcionan las **Franquicias** según la ANAM y el SAT.")
     
-    with st.expander("🟢 Equipaje Personal Libre de Impuesto", expanded=True):
+    with st.expander("🧳 Equipaje Personal (Libre de Impuesto)", expanded=True):
         st.markdown("""
-        Los siguientes artículos son considerados de uso personal y **entran gratis**:
+        Los siguientes artículos **NO se deben sumar a la calculadora** porque se consideran de uso personal:
         * **Ropa, calzado y productos de aseo** personal en cantidades acordes a la duración del viaje.
+        * **2 teléfonos celulares** o de radiolocalización.
+        * **1 Laptop** (computadora portátil).
+        * **1 Tablet** (agenda electrónica).
         * **2 cámaras** fotográficas o de videograbación y sus accesorios.
-        * **2 teléfonos celulares** o radiocontactores.
-        * **1 Agenda electrónica** o computadora portátil (Laptop).
-        * **1 aparato portátil** para el grabado o reproducción de sonido (o reproductor digital).
-        * **5 juguetes** portátiles y una consola de videojuegos con 5 videojuegos.
-        * **Libros, revistas** y documentos impresos.
-        * **Medicamentos** de uso personal (con su receta médica si son psicotrópicos).
-        * Maletas o baúles necesarios para el traslado del equipaje.
+        * **1 consola de videojuegos** y hasta **5 videojuegos**.
+        * **Libros, revistas** y documentos impresos de uso personal.
+        * **Medicamentos** de uso personal (con receta médica si contienen sustancias psicotrópicos).
+        * **Maletas, baúles** o bolsas necesarios para el traslado del equipaje.
+        * **Otros:** 2 instrumentos musicales portátiles, equipo deportivo personal, artículos de bebé (carriola, cuna portátil) y herramientas manuales básicas.
+        * **Mascotas:** Hasta 3 perros o gatos con su documentación sanitaria.
         """)
         
-    with st.expander("🚗 Reglas de Franquicia", expanded=False):
+    with st.expander("💵 Reglas de Franquicia", expanded=False):
         st.markdown("""
-        La franquicia es el valor permitido de mercancía adicional a tu equipaje personal:
-        * **Vía Aérea o Marítima:** $500 USD por pasajero todo el año.
-        * **Vía Terrestre:** $300 USD por pasajero.
-        * **Programa Héroes Paisanos:** Sube a $500 USD por vía terrestre en temporadas vacacionales oficiales.
+        La franquicia aplica para mercancías nuevas adicionales a tu equipaje personal:
+        * **Vía Aérea o Marítima:** $500 USD por persona todo el año.
+        * **Vía Terrestre:** $300 USD por persona.
+        * **Programa Héroes Paisanos:** Sube temporalmente a **$500 USD** por vía terrestre solo en los periodos vacacionales oficiales establecidos por el INM.
         
-        *Nota: Las franquicias de una misma familia son **acumulables** si viajan juntos en el mismo medio de transporte.*
+        👨‍👩‍👧‍👦 **Acumulación Familiar:** Las franquicias de una misma familia son **acumulables** si viajan juntos, llegan al mismo tiempo y en el mismo medio de transporte.
+        """)
+        
+    with st.expander("⚠️ Lo que NO entra en la Franquicia", expanded=False):
+        st.markdown("""
+        Bajo ninguna circunstancia puedes incluir en tu franquicia los siguientes productos (deben pagar impuestos obligatorios):
+        * Bebidas alcohólicas.
+        * Tabacos labrados (cigarrillos o puros).
+        * Combustible automotriz (gasolina o diésel) adicional al que se encuentra en el tanque de tu vehículo.
         """)
         
     st.divider()
@@ -248,7 +258,7 @@ if st.session_state.mostrar_resultados:
     
     st.markdown(ticket_html, unsafe_allow_html=True)
     
-    # --- PROCESAMIENTO MÓVIL (CON SOPORTE UTF-8 SEGURO) ---
+    # --- PROCESAMIENTO MÓVIL ---
     html_impresion_completo = f"""<!DOCTYPE html>
 <html>
 <head>
