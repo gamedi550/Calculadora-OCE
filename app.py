@@ -2,7 +2,8 @@ import streamlit as st
 import pandas as pd
 import streamlit.components.v1 as components
 from datetime import datetime
-import pytz  # Librería para controlar zonas horarias de forma exacta
+import pytz
+import urllib.parse  # Librería nativa para codificar el texto del QR de forma segura
 
 def calcular_impuestos_equipaje(valor_total_usd, via_entrada, tipo_de_cambio, tasa_global_pct, num_pasajeros, es_periodo_paisano=False):
     if via_entrada == "Aérea / Marítima":
@@ -80,7 +81,7 @@ st.markdown("""
         display: none !important;
     }
     
-    h1, h2, h3:not(#seccion-ticket h3), p:not(#seccion-ticket p) {
+    h1, h2, h3:not(#seccion-ticket h3), p:not(#seccion-ticket p), span:not(#seccion-ticket span) {
         display: none !important;
     }
     
@@ -102,12 +103,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Selector de ciudad principal (determina el título y la hora automáticamente)
+# Selector de ciudad principal
 st.subheader("📍 Ubicación de Ingreso")
 ciudad_seleccionada = st.selectbox(
     "Selecciona la aduana donde te encuentras:", 
     list(CIUDADES_ADUANA.keys()),
-    index=0 # Por defecto Ciudad Juárez
+    index=0
 )
 
 st.title(f"🧳 Aduana {ciudad_seleccionada}")
@@ -147,7 +148,6 @@ st.subheader("📋 Datos del Viajero / Grupo")
 nombre_usuario = st.text_input("Nombre del Pasajero / Familia", value="", placeholder="Ej. Familia Pérez")
 num_pasajeros = st.number_input("Número de pasajeros viajando juntos", min_value=1, max_value=20, value=1, step=1)
 
-# Autoselección inteligente de vía de entrada según la ciudad elegida
 via_defecto = ["Terrestre", "Aérea / Marítima"] if "AICM" not in ciudad_seleccionada and "Cancún" not in ciudad_seleccionada else ["Aérea / Marítima", "Terrestre"]
 via = st.selectbox("¿Cómo ingresas al país?", via_defecto)
 paisano = st.toggle("¿Aplica Programa Paisano?") if via == "Terrestre" else False
@@ -171,11 +171,21 @@ if st.session_state.mostrar_resultados:
     for _, fila in df_articulos.iterrows():
         html_filas_articulos += f"<tr><td style='padding: 4px 0;'>• {fila['Artículo']}</td><td style='text-align: right; padding: 4px 0;'>${fila['Precio (USD)']:,.2f} USD</td></tr>"
 
-    # OBTENCIÓN AUTOMÁTICA DE LA HORA SEGÚN LA CIUDAD
     zona_horaria_objeto = pytz.timezone(CIUDADES_ADUANA[ciudad_seleccionada])
     fecha_actual = datetime.now(zona_horaria_objeto).strftime("%Y-%m-%d %H:%M")
-    
     nombre_ticket = nombre_usuario.strip() if nombre_usuario.strip() else "No especificado"
+
+    # --- GENERACIÓN DE CONTENIDO DEL QR ---
+    texto_para_qr = (
+        f"ADUANA {ciudad_seleccionada.upper()}\n"
+        f"Fecha: {fecha_actual}\n"
+        f"Pasajero: {nombre_ticket}\n"
+        f"Total Artículos: ${valor_total_usd:,.2f} USD\n"
+        f"TOTAL A PAGAR: ${res['Impuesto_MXN']:,.2f} MXN"
+    )
+    # Codificamos el texto para que sea seguro ponerlo dentro de una URL de imagen
+    qr_url_encoded = urllib.parse.quote(texto_para_qr)
+    qr_image_url = f"https://api.qrserver.com/v1/create-qr-code/?size=130x130&data={qr_url_encoded}"
 
     ticket_html = f"""
 <div id="seccion-ticket" style="font-family: Arial, sans-serif; max-width: 450px; margin: 15px auto; padding: 20px; border: 1px dashed #bbb; border-radius: 8px; background-color: #ffffff; color: #000000; box-shadow: 0px 2px 5px rgba(0,0,0,0.05);">
@@ -203,7 +213,13 @@ if st.session_state.mostrar_resultados:
             <td style="text-align: right; padding-top: 8px; color: #000;">${res['Impuesto_MXN']:,.2f} MXN</td>
         </tr>
     </table>
-    <div style="border-top: 1px dashed #000; margin: 15px 0 5px 0;"></div>
+    
+    <div style="text-align: center; margin: 20px 0 10px 0;">
+        <img src="{qr_image_url}" alt="Código QR de Validación" style="border: 1px solid #ddd; padding: 5px; background-color: #fff; width: 130px; height: 130px;" />
+        <p style="margin: 5px 0 0 0; font-size: 10px; color: #444; font-style: italic;">Escanea para validar el desglose</p>
+    </div>
+
+    <div style="border-top: 1px dashed #000; margin: 10px 0 5px 0;"></div>
     <p style="font-size: 11px; text-align: center; margin: 0; font-style: italic; color: #222;">{res['Mensaje']}</p>
 </div>
 """
