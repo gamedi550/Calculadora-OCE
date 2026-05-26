@@ -3,7 +3,7 @@ import pandas as pd
 import streamlit.components.v1 as components
 from datetime import datetime
 import pytz
-import urllib.parse  # Librería nativa para codificar el texto del QR de forma segura
+import urllib.parse
 
 def calcular_impuestos_equipaje(valor_total_usd, via_entrada, tipo_de_cambio, tasa_global_pct, num_pasajeros, es_periodo_paisano=False):
     if via_entrada == "Aérea / Marítima":
@@ -175,7 +175,7 @@ if st.session_state.mostrar_resultados:
     fecha_actual = datetime.now(zona_horaria_objeto).strftime("%Y-%m-%d %H:%M")
     nombre_ticket = nombre_usuario.strip() if nombre_usuario.strip() else "No especificado"
 
-    # --- GENERACIÓN DE CONTENIDO DEL QR ---
+    # Generación de contenido para el QR
     texto_para_qr = (
         f"ADUANA {ciudad_seleccionada.upper()}\n"
         f"Fecha: {fecha_actual}\n"
@@ -183,50 +183,46 @@ if st.session_state.mostrar_resultados:
         f"Total Artículos: ${valor_total_usd:,.2f} USD\n"
         f"TOTAL A PAGAR: ${res['Impuesto_MXN']:,.2f} MXN"
     )
-    # Codificamos el texto para que sea seguro ponerlo dentro de una URL de imagen
     qr_url_encoded = urllib.parse.quote(texto_para_qr)
     qr_image_url = f"https://api.qrserver.com/v1/create-qr-code/?size=130x130&data={qr_url_encoded}"
 
-    ticket_html = f"""
-<div id="seccion-ticket" style="font-family: Arial, sans-serif; max-width: 450px; margin: 15px auto; padding: 20px; border: 1px dashed #bbb; border-radius: 8px; background-color: #ffffff; color: #000000; box-shadow: 0px 2px 5px rgba(0,0,0,0.05);">
-    <h3 style="text-align: center; margin: 0 0 5px 0; font-size: 16px; color: #000; font-weight: bold;">TICKET ADUANA {ciudad_seleccionada.upper()}</h3>
-    <p style="text-align: center; margin: 0 0 15px 0; font-size: 11px; color: #666;">{fecha_actual}</p>
-    <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
-    <p style="margin: 5px 0; font-size: 13px; color: #000;"><b>Pasajero/Familia:</b> {nombre_ticket}</p>
-    <p style="margin: 5px 0; font-size: 13px; color: #000;"><b>Pasajeros en Grupo:</b> {num_pasajeros}</p>
-    <p style="margin: 5px 0; font-size: 13px; color: #000;"><b>Vía de Entrada:</b> {via}</p>
-    <p style="margin: 5px 0; font-size: 13px; color: #000;"><b>Tipo de Cambio:</b> ${tipo_cambio:.2f} MXN</p>
-    <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
-    <h4 style="margin: 0 0 5px 0; font-size: 13px; color: #000; font-weight: bold;">DESGLOSE DE MERCANCÍA:</h4>
-    <table style="width: 100%; font-size: 13px; border-collapse: collapse; color: #000;">
-        {html_filas_articulos}
-    </table>
-    <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
-    <table style="width: 100%; font-size: 13px; line-height: 1.6; color: #000;">
-        <tr><td>Suma Total Artículos:</td><td style="text-align: right;">${valor_total_usd:,.2f} USD</td></tr>
-        <tr><td>Franquicia Individual:</td><td style="text-align: right;">${res['Franquicia_Individual']:.2f} USD</td></tr>
-        <tr><td><b>Franquicia Total ({num_pasajeros} pasajeros):</b></td><td style="text-align: right;"><b>-${res['Franquicia_Total']:.2f} USD</b></td></tr>
-        <tr><td>Excedente Gravable:</td><td style="text-align: right;">${res['Excedente_USD']:,.2f} USD</td></tr>
-        <tr><td>Tasa de Impuesto:</td><td style="text-align: right;">{res['Tasa']}</td></tr>
-        <tr style="font-size: 16px; font-weight: bold; border-top: 1px solid #000;">
-            <td style="padding-top: 8px; color: #000;">TOTAL A PAGAR:</td>
-            <td style="text-align: right; padding-top: 8px; color: #000;">${res['Impuesto_MXN']:,.2f} MXN</td>
-        </tr>
-    </table>
-    
-    <div style="text-align: center; margin: 20px 0 10px 0;">
-        <img src="{qr_image_url}" alt="Código QR de Validación" style="border: 1px solid #ddd; padding: 5px; background-color: #fff; width: 130px; height: 130px;" />
-        <p style="margin: 5px 0 0 0; font-size: 10px; color: #444; font-style: italic;">Escanea para validar el desglose</p>
-    </div>
-
-    <div style="border-top: 1px dashed #000; margin: 10px 0 5px 0;"></div>
-    <p style="font-size: 11px; text-align: center; margin: 0; font-style: italic; color: #222;">{res['Mensaje']}</p>
+    # NOTA: Todo este string HTML debe mantenerse pegado al borde izquierdo para que Streamlit lo procese bien
+    ticket_html = f"""<div id="seccion-ticket" style="font-family: Arial, sans-serif; max-width: 450px; margin: 15px auto; padding: 20px; border: 1px dashed #bbb; border-radius: 8px; background-color: #ffffff; color: #000000; box-shadow: 0px 2px 5px rgba(0,0,0,0.05);">
+<h3 style="text-align: center; margin: 0 0 5px 0; font-size: 16px; color: #000; font-weight: bold;">TICKET ADUANA {ciudad_seleccionada.upper()}</h3>
+<p style="text-align: center; margin: 0 0 15px 0; font-size: 11px; color: #666;">{fecha_actual}</p>
+<div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
+<p style="margin: 5px 0; font-size: 13px; color: #000;"><b>Pasajero/Familia:</b> {nombre_ticket}</p>
+<p style="margin: 5px 0; font-size: 13px; color: #000;"><b>Pasajeros en Grupo:</b> {num_pasajeros}</p>
+<p style="margin: 5px 0; font-size: 13px; color: #000;"><b>Vía de Entrada:</b> {via}</p>
+<p style="margin: 5px 0; font-size: 13px; color: #000;"><b>Tipo de Cambio:</b> ${tipo_cambio:.2f} MXN</p>
+<div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
+<h4 style="margin: 0 0 5px 0; font-size: 13px; color: #000; font-weight: bold;">DESGLOSE DE MERCANCÍA:</h4>
+<table style="width: 100%; font-size: 13px; border-collapse: collapse; color: #000;">
+{html_filas_articulos}
+</table>
+<div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
+<table style="width: 100%; font-size: 13px; line-height: 1.6; color: #000;">
+<tr><td>Suma Total Artículos:</td><td style="text-align: right;">${valor_total_usd:,.2f} USD</td></tr>
+<tr><td>Franquicia Individual:</td><td style="text-align: right;">${res['Franquicia_Individual']:.2f} USD</td></tr>
+<tr><td><b>Franquicia Total ({num_pasajeros} pasajeros):</b></td><td style="text-align: right;"><b>-${res['Franquicia_Total']:.2f} USD</b></td></tr>
+<tr><td>Excedente Gravable:</td><td style="text-align: right;">${res['Excedente_USD']:,.2f} USD</td></tr>
+<tr><td>Tasa de Impuesto:</td><td style="text-align: right;">{res['Tasa']}</td></tr>
+<tr style="font-size: 16px; font-weight: bold; border-top: 1px solid #000;">
+<td style="padding-top: 8px; color: #000;">TOTAL A PAGAR:</td>
+<td style="text-align: right; padding-top: 8px; color: #000;">${res['Impuesto_MXN']:,.2f} MXN</td>
+</tr>
+</table>
+<div style="text-align: center; margin: 20px 0 10px 0;">
+<img src="{qr_image_url}" alt="Código QR de Validación" style="border: 1px solid #ddd; padding: 5px; background-color: #fff; width: 130px; height: 130px;" />
+<p style="margin: 5px 0 0 0; font-size: 10px; color: #444; font-style: italic;">Escanea para validar el desglose</p>
 </div>
-"""
+<div style="border-top: 1px dashed #000; margin: 10px 0 5px 0;"></div>
+<p style="font-size: 11px; text-align: center; margin: 0; font-style: italic; color: #222;">{res['Mensaje']}</p>
+</div>"""
     
     st.markdown(ticket_html, unsafe_allow_html=True)
     
-    # Texto plano dinámico para la descarga
+    # Texto plano de respaldo para descarga
     texto_ticket_txt = (
         f"========================================\n"
         f"     TICKET ADUANA {ciudad_seleccionada.upper()}\n"
