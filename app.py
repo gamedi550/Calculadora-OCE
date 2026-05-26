@@ -14,7 +14,6 @@ def calcular_impuestos_equipaje(valor_total_usd, via_entrada, tipo_de_cambio, ta
     
     franquicia_total_usd = franquicia_individual * num_pasajeros
     
-    # --- CORRECCIÓN AQUÍ: Se añadieron las llaves 'Tasa' y 'Excedente_MXN' para evitar el KeyError ---
     if valor_total_usd <= franquicia_total_usd:
         return {
             "Estatus": "Libre de impuestos",
@@ -85,16 +84,24 @@ st.divider()
 # --- 2. CALCULADORA INTERACTIVA DE ARTÍCULOS ---
 st.subheader("🔢 Calculadora de Artículos")
 
+# Configuración fija de los campos solicitados
 if "lista_articulos" not in st.session_state:
-    st.session_state.lista_articulos = pd.DataFrame(columns=["Artículo", "Precio (USD)"])
+    st.session_state.lista_articulos = pd.DataFrame([
+        {"Artículo": "Ropa", "Precio (USD)": 0.0},
+        {"Artículo": "Electrodomésticos", "Precio (USD)": 0.0},
+        {"Artículo": "Muebles", "Precio (USD)": 0.0},
+        {"Artículo": "Herramientas", "Precio (USD)": 0.0}
+    ])
 
+# Se bloquea la edición de la columna 'Artículo' y se congela el número de filas
 df_articulos = st.data_editor(
     st.session_state.lista_articulos,
-    num_rows="dynamic",  
+    num_rows="fixed",  
     use_container_width=True,
     key="editor_articulos",
+    disabled=["Artículo"], 
     column_config={
-        "Artículo": st.column_config.TextColumn("Descripción", required=True),
+        "Artículo": st.column_config.TextColumn("Descripción"),
         "Precio (USD)": st.column_config.NumberColumn("Valor ($ USD)", min_value=0.0, format="$%.2f", required=True)
     }
 )
@@ -128,11 +135,13 @@ if st.session_state.mostrar_resultados:
     
     st.subheader("📋 Resultado del Cálculo")
     
+    # Filtrar para mostrar en el ticket únicamente lo que sí tiene un costo asignado
+    articulos_con_valor = df_articulos[df_articulos["Precio (USD)"] > 0]
+    
     html_filas_articulos = ""
-    if not df_articulos.empty:
-        for _, fila in df_articulos.iterrows():
-            if pd.notna(fila['Artículo']) and pd.notna(fila['Precio (USD)']):
-                html_filas_articulos += f"<tr><td style='padding: 4px 0;'>• {fila['Artículo']}</td><td style='text-align: right; padding: 4px 0;'>${fila['Precio (USD)']:,.2f} USD</td></tr>"
+    if not articulos_con_valor.empty:
+        for _, fila in articulos_con_valor.iterrows():
+            html_filas_articulos += f"<tr><td style='padding: 4px 0;'>• {fila['Artículo']}</td><td style='text-align: right; padding: 4px 0;'>${fila['Precio (USD)']:,.2f} USD</td></tr>"
     else:
         html_filas_articulos = "<tr><td colspan='2' style='font-style: italic; color: #888;'>Sin artículos declarados</td></tr>"
 
@@ -186,7 +195,7 @@ if st.session_state.mostrar_resultados:
     
     st.markdown(ticket_html, unsafe_allow_html=True)
     
-    # --- PREPARACIÓN DEL CONTENIDO EXCLUSIVO DE IMPRESIÓN ---
+    # --- CONTENIDO EXCLUSIVO DE IMPRESIÓN PESTAÑA NUEVA (MÓVIL/DESKTOP) ---
     html_impresion_completo = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -220,7 +229,7 @@ if st.session_state.mostrar_resultados:
 
     b64_html = base64.b64encode(html_impresion_completo.encode('utf-8')).decode('utf-8')
 
-    # Texto plano de respaldo
+    # Texto plano de respaldo para descargar (.txt)
     texto_ticket_txt = (
         f"========================================\n"
         f"     TICKET ADUANA {ciudad_seleccionada.upper()}\n"
@@ -233,8 +242,8 @@ if st.session_state.mostrar_resultados:
         f"----------------------------------------\n"
         f"ARTÍCULOS DETALLADOS:\n"
     )
-    if not df_articulos.empty:
-        for _, fila in df_articulos.iterrows():
+    if not articulos_con_valor.empty:
+        for _, fila in articulos_con_valor.iterrows():
             texto_ticket_txt += f"- {fila['Artículo']}: ${fila['Precio (USD)']:,.2f} USD\n"
     else:
         texto_ticket_txt += "Sin artículos declarados\n"
