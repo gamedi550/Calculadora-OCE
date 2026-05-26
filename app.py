@@ -100,14 +100,14 @@ st.divider()
 # --- 2. CALCULADORA INTERACTIVA DE ARTÍCULOS ---
 st.subheader("🔢 Calculadora de Artículos")
 
-# CORREGIDO: Se eliminó la llave errónea y se agregó la numeración secuencial fija
+# CORREGIDO: Se limpian las descripciones y se fuerza el índice izquierdo para iniciar en 1, 2, 3, 4
 if "lista_articulos" not in st.session_state:
     st.session_state.lista_articulos = pd.DataFrame([
-        {"Artículo": "1. Ropa", "Precio (USD)": 0.0},
-        {"Artículo": "2. Electrodomésticos", "Precio (USD)": 0.0},
-        {"Artículo": "3. Muebles", "Precio (USD)": 0.0},
-        {"Artículo": "4. Herramientas", "Precio (USD)": 0.0}
-    ])
+        {"Artículo": "Ropa", "Precio (USD)": 0.0},
+        {"Artículo": "Electrodomésticos", "Precio (USD)": 0.0},
+        {"Artículo": "Muebles", "Precio (USD)": 0.0},
+        {"Artículo": "Herramientas", "Precio (USD)": 0.0}
+    ], index=[1, 2, 3, 4])
 
 df_articulos = st.data_editor(
     st.session_state.lista_articulos,
@@ -154,8 +154,9 @@ if st.session_state.mostrar_resultados:
     
     html_filas_articulos = ""
     if not articulos_con_valor.empty:
-        for _, fila in articulos_con_valor.iterrows():
-            html_filas_articulos += f"<tr><td style='padding: 4px 0;'>• {fila['Artículo']}</td><td style='text-align: right; padding: 4px 0;'>${fila['Precio (USD)']:,.2f} USD</td></tr>"
+        for idx, fila in articulos_con_valor.iterrows():
+            # Mantiene el número correlativo correcto en el ticket impreso
+            html_filas_articulos += f"<tr><td style='padding: 4px 0;'>{idx}. {fila['Artículo']}</td><td style='text-align: right; padding: 4px 0;'>${fila['Precio (USD)']:,.2f} USD</td></tr>"
     else:
         html_filas_articulos = "<tr><td colspan='2' style='font-style: italic; color: #888;'>Sin artículos declarados</td></tr>"
 
@@ -256,8 +257,8 @@ if st.session_state.mostrar_resultados:
         f"ARTÍCULOS DETALLADOS:\n"
     )
     if not articulos_con_valor.empty:
-        for _, fila in articulos_con_valor.iterrows():
-            texto_ticket_txt += f"- {fila['Artículo']}: ${fila['Precio (USD)']:,.2f} USD\n"
+        for idx, fila in articulos_con_valor.iterrows():
+            texto_ticket_txt += f"{idx}. {fila['Artículo']}: ${fila['Precio (USD)']:,.2f} USD\n"
     else:
         texto_ticket_txt += "Sin artículos declarados\n"
         
