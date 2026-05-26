@@ -5,20 +5,18 @@ from datetime import datetime
 import pytz
 import urllib.parse
 import base64
-import requests  # Nueva librería para consultar el tipo de cambio en tiempo real
+import requests
 
 # --- FUNCIÓN PARA OBTENER EL TIPO DE CAMBIO AUTOMÁTICO ---
-@st.cache_data(ttl="1d")  # Guarda en caché por 1 día para que la app sea rápida y no sature la API
+@st.cache_data(ttl="1d")
 def obtener_tipo_cambio_real():
     try:
-        # API pública, gratuita y sin necesidad de tokens/keys
         url = "https://open.er-api.com/v6/latest/USD"
         response = requests.get(url, timeout=5)
         data = response.json()
         tipo_cambio = float(data["rates"]["MXN"])
         return round(tipo_cambio, 2)
     except Exception as e:
-        # Valor de respaldo (fallback) por si el servidor de la API falla o no hay internet
         return 20.00
 
 def calcular_impuestos_equipaje(valor_total_usd, via_entrada, tipo_de_cambio, tasa_global_pct, num_pasajeros, es_periodo_paisano=False):
@@ -89,11 +87,10 @@ ciudad_seleccionada = st.selectbox(
 st.title(f"🧳 Aduana {ciudad_seleccionada}")
 st.write("Calculadora de equipaje familiar con franquicia acumulada.")
 
-# --- 1. CONFIGURACIÓN AVANZADA (AHORA AUTOMÁTICA) ---
+# --- 1. CONFIGURACIÓN AVANZADA ---
 with st.expander("⚙️ Configuración de Tasas e Impuestos", expanded=False):
     tasa_impuesto = st.number_input("Tasa Global de Impuesto (%)", min_value=0.0, max_value=100.0, value=16.0, step=0.5)
     
-    # Se consulta el tipo de cambio del día automáticamente para el valor por defecto
     tipo_cambio_del_dia = obtener_tipo_cambio_real()
     tipo_cambio = st.number_input("Tipo de cambio (MXN por USD)", min_value=1.0, step=0.05, value=tipo_cambio_del_dia)
     st.caption(f"💡 El tipo de cambio oficial se actualizó automáticamente hoy a: **${tipo_cambio_del_dia} MXN**")
@@ -103,12 +100,13 @@ st.divider()
 # --- 2. CALCULADORA INTERACTIVA DE ARTÍCULOS ---
 st.subheader("🔢 Calculadora de Artículos")
 
+# CORREGIDO: Se eliminó la llave errónea y se agregó la numeración secuencial fija
 if "lista_articulos" not in st.session_state:
     st.session_state.lista_articulos = pd.DataFrame([
-        {"Artículo": "Ropa", "Precio (USD)": 0.0},
-        {"Artículo": "Electrodomésticos", "Precio (USD)": 0.0},
-        {"Archivo": "Muebles", "Artículo": "Muebles", "Precio (USD)": 0.0},
-        {"Artículo": "Herramientas", "Precio (USD)": 0.0}
+        {"Artículo": "1. Ropa", "Precio (USD)": 0.0},
+        {"Artículo": "2. Electrodomésticos", "Precio (USD)": 0.0},
+        {"Artículo": "3. Muebles", "Precio (USD)": 0.0},
+        {"Artículo": "4. Herramientas", "Precio (USD)": 0.0}
     ])
 
 df_articulos = st.data_editor(
@@ -210,7 +208,7 @@ if st.session_state.mostrar_resultados:
     
     st.markdown(ticket_html, unsafe_allow_html=True)
     
-    # --- PROCESAMIENTO MÓVIL (iOS / Android) ---
+    # --- PROCESAMIENTO MÓVIL ---
     html_impresion_completo = f"""<!DOCTYPE html>
 <html>
 <head>
