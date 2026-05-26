@@ -104,17 +104,22 @@ with st.sidebar:
         La franquicia aplica para mercancías nuevas adicionales a tu equipaje personal:
         * **Vía Aérea o Marítima:** $500 USD por persona todo el año.
         * **Vía Terrestre:** $300 USD por persona.
-        * **Programa Héroes Paisanos:** Sube temporalmente a **$500 USD** por vía terrestre solo en los periodos vacacionales oficiales establecidos por el INM.
+        * **Programa Héroes Paisanos:** Sube de forma temporal a **$500 USD** por vía terrestre solo en los periodos vacacionales oficiales establecidos por el INM.
         
         👨‍👩‍👧‍👦 **Acumulación Familiar:** Las franquicias de una misma familia son **acumulables** si viajan juntos, llegan al mismo tiempo y en el mismo medio de transporte.
         """)
         
-    with st.expander("⚠️ Lo que NO entra en la Franquicia", expanded=False):
+    with st.expander("⚠️ Límites de Alcohol, Tabaco y Restricciones", expanded=False):
         st.markdown("""
-        Bajo ninguna circunstancia puedes incluir en tu franquicia los siguientes productos (deben pagar impuestos obligatorios):
-        * Bebidas alcohólicas.
-        * Tabacos labrados (cigarrillos o puros).
-        * Combustible automotriz (gasolina o diésel) adicional al que se encuentra en el tanque de tu vehículo.
+        Los pasajeros **mayores de 18 años** pueden ingresar libre de impuestos únicamente las siguientes cantidades:
+        * **Alcohol (licores y bebidas alcohólicas):** Hasta 3 litros.
+        * **Vino:** Hasta 6 litros.
+        * **Tabaco (elegir solo una opción):**
+          * **20 cajetillas** de cigarros (200 cigarros).
+          * **25 puros**.
+          * **200 gramos** de tabaco.
+        
+        ⛔ **IMPORTANTE:** Si excedes estas cantidades o intentas meterlos dentro de la franquicia en dinero de la calculadora, **no está permitido** y se deben pagar impuestos comerciales obligatorios. Asimismo, está prohibida la gasolina adicional al tanque de tu vehículo.
         """)
         
     st.divider()
