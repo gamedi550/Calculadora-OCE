@@ -5,6 +5,21 @@ from datetime import datetime
 import pytz
 import urllib.parse
 import base64
+import requests  # Nueva librería para consultar el tipo de cambio en tiempo real
+
+# --- FUNCIÓN PARA OBTENER EL TIPO DE CAMBIO AUTOMÁTICO ---
+@st.cache_data(ttl="1d")  # Guarda en caché por 1 día para que la app sea rápida y no sature la API
+def obtener_tipo_cambio_real():
+    try:
+        # API pública, gratuita y sin necesidad de tokens/keys
+        url = "https://open.er-api.com/v6/latest/USD"
+        response = requests.get(url, timeout=5)
+        data = response.json()
+        tipo_cambio = float(data["rates"]["MXN"])
+        return round(tipo_cambio, 2)
+    except Exception as e:
+        # Valor de respaldo (fallback) por si el servidor de la API falla o no hay internet
+        return 20.00
 
 def calcular_impuestos_equipaje(valor_total_usd, via_entrada, tipo_de_cambio, tasa_global_pct, num_pasajeros, es_periodo_paisano=False):
     if via_entrada == "Aérea / Marítima":
@@ -74,26 +89,28 @@ ciudad_seleccionada = st.selectbox(
 st.title(f"🧳 Aduana {ciudad_seleccionada}")
 st.write("Calculadora de equipaje familiar con franquicia acumulada.")
 
-# --- 1. CONFIGURACIÓN AVANZADA ---
+# --- 1. CONFIGURACIÓN AVANZADA (AHORA AUTOMÁTICA) ---
 with st.expander("⚙️ Configuración de Tasas e Impuestos", expanded=False):
     tasa_impuesto = st.number_input("Tasa Global de Impuesto (%)", min_value=0.0, max_value=100.0, value=16.0, step=0.5)
-    tipo_cambio = st.number_input("Tipo de cambio (MXN por USD)", min_value=1.0, step=0.05, value=18.50)
+    
+    # Se consulta el tipo de cambio del día automáticamente para el valor por defecto
+    tipo_cambio_del_dia = obtener_tipo_cambio_real()
+    tipo_cambio = st.number_input("Tipo de cambio (MXN por USD)", min_value=1.0, step=0.05, value=tipo_cambio_del_dia)
+    st.caption(f"💡 El tipo de cambio oficial se actualizó automáticamente hoy a: **${tipo_cambio_del_dia} MXN**")
 
 st.divider()
 
 # --- 2. CALCULADORA INTERACTIVA DE ARTÍCULOS ---
 st.subheader("🔢 Calculadora de Artículos")
 
-# Configuración fija de los campos solicitados
 if "lista_articulos" not in st.session_state:
     st.session_state.lista_articulos = pd.DataFrame([
         {"Artículo": "Ropa", "Precio (USD)": 0.0},
         {"Artículo": "Electrodomésticos", "Precio (USD)": 0.0},
-        {"Artículo": "Muebles", "Precio (USD)": 0.0},
+        {"Archivo": "Muebles", "Artículo": "Muebles", "Precio (USD)": 0.0},
         {"Artículo": "Herramientas", "Precio (USD)": 0.0}
     ])
 
-# Se bloquea la edición de la columna 'Artículo' y se congela el número de filas
 df_articulos = st.data_editor(
     st.session_state.lista_articulos,
     num_rows="fixed",  
@@ -135,7 +152,6 @@ if st.session_state.mostrar_resultados:
     
     st.subheader("📋 Resultado del Cálculo")
     
-    # Filtrar para mostrar en el ticket únicamente lo que sí tiene un costo asignado
     articulos_con_valor = df_articulos[df_articulos["Precio (USD)"] > 0]
     
     html_filas_articulos = ""
@@ -149,7 +165,6 @@ if st.session_state.mostrar_resultados:
     fecha_actual = datetime.now(zona_horaria_objeto).strftime("%Y-%m-%d %H:%M")
     nombre_ticket = nombre_usuario.strip() if nombre_usuario.strip() else "No especificado"
 
-    # Generación de contenido para el QR
     texto_para_qr = (
         f"ADUANA {ciudad_seleccionada.upper()}\n"
         f"Fecha: {fecha_actual}\n"
@@ -186,7 +201,7 @@ if st.session_state.mostrar_resultados:
 </tr>
 </table>
 <div style="text-align: center; margin: 20px 0 10px 0;">
-<img src="{qr_image_url}" alt="Código QR de Validación" style="border: 1px solid #ddd; padding: 5px; background-color: #fff; width: 130px; height: 130px;" />
+<img src="{qr_image_url}" alt="Código QR de Validation" style="border: 1px solid #ddd; padding: 5px; background-color: #fff; width: 130px; height: 130px;" />
 <p style="margin: 5px 0 0 0; font-size: 10px; color: #444; font-style: italic;">Escanea para validar el desglose</p>
 </div>
 <div style="border-top: 1px dashed #000; margin: 10px 0 5px 0;"></div>
@@ -195,7 +210,7 @@ if st.session_state.mostrar_resultados:
     
     st.markdown(ticket_html, unsafe_allow_html=True)
     
-    # --- CONTENIDO EXCLUSIVO DE IMPRESIÓN PESTAÑA NUEVA (MÓVIL/DESKTOP) ---
+    # --- PROCESAMIENTO MÓVIL (iOS / Android) ---
     html_impresion_completo = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -229,7 +244,7 @@ if st.session_state.mostrar_resultados:
 
     b64_html = base64.b64encode(html_impresion_completo.encode('utf-8')).decode('utf-8')
 
-    # Texto plano de respaldo para descargar (.txt)
+    # Texto plano alternativo (.txt)
     texto_ticket_txt = (
         f"========================================\n"
         f"     TICKET ADUANA {ciudad_seleccionada.upper()}\n"
