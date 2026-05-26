@@ -100,7 +100,6 @@ st.divider()
 # --- 2. CALCULADORA INTERACTIVA DE ARTÍCULOS ---
 st.subheader("🔢 Calculadora de Artículos")
 
-# ACTUALIZADO: Se agregó 'Productos alimenticios' al diccionario base y se amplió el índice a 5
 if "lista_articulos" not in st.session_state:
     st.session_state.lista_articulos = pd.DataFrame([
         {"Artículo": "Ropa", "Precio (USD)": 0.0},
@@ -200,7 +199,7 @@ if st.session_state.mostrar_resultados:
 </tr>
 </table>
 <div style="text-align: center; margin: 20px 0 10px 0;">
-<img src="{qr_image_url}" alt="Código QR de Validation" style="border: 1px solid #ddd; padding: 5px; background-color: #fff; width: 130px; height: 130px;" />
+<img src="{qr_image_url}" alt="Código QR de Validación" style="border: 1px solid #ddd; padding: 5px; background-color: #fff; width: 130px; height: 130px;" />
 <p style="margin: 5px 0 0 0; font-size: 10px; color: #444; font-style: italic;">Escanea para validar el desglose</p>
 </div>
 <div style="border-top: 1px dashed #000; margin: 10px 0 5px 0;"></div>
@@ -209,7 +208,7 @@ if st.session_state.mostrar_resultados:
     
     st.markdown(ticket_html, unsafe_allow_html=True)
     
-    # --- PROCESAMIENTO MÓVIL ---
+    # --- PROCESAMIENTO MÓVIL (CON SOPORTE UTF-8 SEGURO) ---
     html_impresion_completo = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -292,7 +291,14 @@ if st.session_state.mostrar_resultados:
             <script>
                 function abrirTicketMovil() {{
                     var b64Data = "{b64_html}";
-                    var htmlDecodificado = decodeURIComponent(escape(atob(b64Data)));
+                    // Decodificación UTF-8 compatible con acentos y eñes de forma moderna
+                    var strData = atob(b64Data);
+                    var charCodeArray = new Uint8Array(strData.length);
+                    for (var i = 0; i < strData.length; i++) {{
+                        charCodeArray[i] = strData.charCodeAt(i);
+                    }}
+                    var htmlDecodificado = new TextDecoder("utf-8").decode(charCodeArray);
+                    
                     var ventanaImpresion = window.open('', '_blank');
                     if(ventanaImpresion) {{
                         ventanaImpresion.document.write(htmlDecodificado);
