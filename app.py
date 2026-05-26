@@ -1,9 +1,10 @@
-import streamlit as st  # Corregido: 'import' en minúscula
+import streamlit as st
 import pandas as pd
 import streamlit.components.v1 as components
 from datetime import datetime
 import pytz
 import urllib.parse
+import base64  # Necesario para empaquetar el HTML de forma segura hacia el móvil
 
 def calcular_impuestos_equipaje(valor_total_usd, via_entrada, tipo_de_cambio, tasa_global_pct, num_pasajeros, es_periodo_paisano=False):
     if via_entrada == "Aérea / Marítima":
@@ -57,51 +58,8 @@ CIUDADES_ADUANA = {
     "Cancún": "America/Cancun"
 }
 
-# --- CONFIGURACIÓN DE LA INTERFAZ MÓVIL ---
+# --- CONFIGURACIÓN DE LA INTERFAZ ---
 st.set_page_config(page_title="Control Aduanal México", page_icon="🧳", layout="centered")
-
-# REGLAS DE IMPRESIÓN ULTRA ESTRICTAS
-st.markdown("""
-<style>
-@media print {
-    [data-testid="stHeader"], 
-    footer, 
-    hr,
-    .stButton, 
-    div.stDownloadButton,
-    div.stTextInput,
-    div.stNumberInput,
-    div.stSelectbox,
-    div.stCheckbox,
-    div.stDataFrame,
-    div.stExpander,
-    div[data-testid="stMetric"],
-    div[data-testid="stMetricWidget"],
-    div[data-testid="stBlock"] {
-        display: none !important;
-    }
-    
-    h1, h2, h3:not(#seccion-ticket h3), p:not(#seccion-ticket p), span:not(#seccion-ticket span) {
-        display: none !important;
-    }
-    
-    #seccion-ticket {
-        position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        border: none !important;
-        box-shadow: none !important;
-        margin: 0 !important;
-        padding: 10px !important;
-        background-color: white !important;
-        color: black !important;
-        display: block !important;
-    }
-}
-</style>
-""", unsafe_allow_html=True)
 
 # Selector de ciudad principal
 st.subheader("📍 Ubicación de Ingreso")
@@ -124,7 +82,6 @@ st.divider()
 # --- 2. CALCULADORA INTERACTIVA DE ARTÍCULOS ---
 st.subheader("🔢 Calculadora de Artículos")
 
-# Modificado: Se inicializa vacío para no alterar la sumatoria con un "ejemplo" fantasma
 if "lista_articulos" not in st.session_state:
     st.session_state.lista_articulos = pd.DataFrame(columns=["Artículo", "Precio (USD)"])
 
@@ -191,6 +148,7 @@ if st.session_state.mostrar_resultados:
     qr_url_encoded = urllib.parse.quote(texto_para_qr)
     qr_image_url = f"https://api.qrserver.com/v1/create-qr-code/?size=130x130&data={qr_url_encoded}"
 
+    # Estructura del Ticket Visual en App
     ticket_html = f"""<div id="seccion-ticket" style="font-family: Arial, sans-serif; max-width: 450px; margin: 15px auto; padding: 20px; border: 1px dashed #bbb; border-radius: 8px; background-color: #ffffff; color: #000000; box-shadow: 0px 2px 5px rgba(0,0,0,0.05);">
 <h3 style="text-align: center; margin: 0 0 5px 0; font-size: 16px; color: #000; font-weight: bold;">TICKET ADUANA {ciudad_seleccionada.upper()}</h3>
 <p style="text-align: center; margin: 0 0 15px 0; font-size: 11px; color: #666;">{fecha_actual}</p>
@@ -226,7 +184,43 @@ if st.session_state.mostrar_resultados:
     
     st.markdown(ticket_html, unsafe_allow_html=True)
     
-    # Texto plano de respaldo para descarga
+    # --- PREPARACIÓN DEL CONTENIDO EXCLUSIVO DE IMPRESIÓN (Pestaña nueva) ---
+    html_impresion_completo = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Imprimir Ticket - Aduana</title>
+    <style>
+        body {{ background-color: #f3f4f6; margin: 0; padding: 10px; font-family: Arial, sans-serif; }}
+        .btn-imprimir {{
+            display: block; width: 100%; max-width: 450px; margin: 10px auto;
+            padding: 12px; background-color: #4CAF50; color: white; border: none;
+            border-radius: 6px; font-weight: bold; font-size: 16px; text-align: center; cursor: pointer;
+        }}
+        @media print {{
+            .no-print {{ display: none !important; }}
+            body {{ background-color: white; padding: 0; margin: 0; }}
+            #seccion-ticket {{ border: none !important; box-shadow: none !important; margin: 0 !important; padding: 0 !important; }}
+        }}
+    </style>
+</head>
+<body>
+    <button class="btn-imprimir no-print" onclick="window.print()">📥 CLIC AQUÍ PARA IMPRIMIR O GUARDAR PDF</button>
+    {ticket_html}
+    <script>
+        // Auto-disparar impresión al cargar en la mayoría de los móviles modernos
+        window.onload = function() {{
+            setTimeout(function() {{ window.print(); }}, 500);
+        }};
+    </script>
+</body>
+</html>"""
+
+    # Codificamos a Base64 para pasar el bloque HTML de forma segura a JavaScript
+    b64_html = base64.b64encode(html_impresion_completo.encode('utf-8')).decode('utf-8')
+
+    # Texto plano de respaldo para descarga (.txt)
     texto_ticket_txt = (
         f"========================================\n"
         f"     TICKET ADUANA {ciudad_seleccionada.upper()}\n"
@@ -263,7 +257,7 @@ if st.session_state.mostrar_resultados:
     with col1:
         nombre_archivo = nombre_usuario.replace(" ", "_") if nombre_usuario.strip() else "Pasajero"
         st.download_button(
-            label="📥 Descargar Ticket (.txt)",
+            label="📥 Descargar (.txt)",
             data=texto_ticket_txt,
             file_name=f"Desglose_{ciudad_seleccionada.replace(' ', '_')}_{nombre_archivo}.txt",
             mime="text/plain",
@@ -271,15 +265,22 @@ if st.session_state.mostrar_resultados:
         )
         
     with col2:
-        # Corregido: Se sustituye el trigger de impresión iframe por un modal informativo 
-        # para que el usuario use el comando nativo del sistema sin bloqueos de seguridad.
-        components.html("""
+        # Script que recibe el Base64, abre la pestaña limpia y ejecuta el motor nativo Android/iOS
+        components.html(f"""
             <script>
-                function alertarImpresion() {
-                    alert("Para guardar como PDF o Imprimir el ticket limpio, por favor utiliza el comando nativo de tu navegador:\\n\\n• Windows/Linux: Ctrl + P\\n• Mac: Cmd + P\\n\\nTu diseño limpio de ticket ya está preconfigurado automáticamente.");
-                }
+                function abrirTicketMovil() {{
+                    var b64Data = "{b64_html}";
+                    var htmlDecodificado = decodeURIComponent(escape(atob(b64Data)));
+                    var ventanaImpresion = window.open('', '_blank');
+                    if(ventanaImpresion) {{
+                        ventanaImpresion.document.write(htmlDecodificado);
+                        ventanaImpresion.document.close();
+                    }} else {{
+                        alert("Por favor, permite las ventanas emergentes (pop-ups) en tu navegador para ver el ticket.");
+                    }}
+                }}
             </script>
-            <button onclick="alertarImpresion()" style="
+            <button onclick="abrirTicketMovil()" style="
                 width: 100%; 
                 height: 38px; 
                 background-color: #4CAF50; 
@@ -289,6 +290,6 @@ if st.session_state.mostrar_resultados:
                 font-weight: bold; 
                 font-size: 14px;
                 cursor: pointer;">
-                🖨️ ¿Cómo Imprimir / PDF?
+                🖨️ Imprimir / Guardar PDF
             </button>
         """, height=45)
