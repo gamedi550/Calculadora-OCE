@@ -49,25 +49,47 @@ def calcular_impuestos_equipaje(valor_total_usd, via_entrada, tipo_de_cambio, ta
 # --- CONFIGURACIÓN DE LA INTERFAZ MÓVIL ---
 st.set_page_config(page_title="Aduana Pro", page_icon="🧳", layout="centered")
 
-# Estilos CSS globales de impresión alineados totalmente a la izquierda (sin sangría de Python)
+# REGLAS DE IMPRESIÓN ULTRA ESTRICTAS: Oculta por completo los componentes nativos de Streamlit
 st.markdown("""
 <style>
 @media print {
-    [data-testid="stHeader"], footer, .stButton, div.stDownloadButton {
+    /* 1. Ocultar absolutamente todos los elementos de captura y botones */
+    [data-testid="stHeader"], 
+    footer, 
+    hr,
+    .stButton, 
+    div.stDownloadButton,
+    div.stTextInput,
+    div.stNumberInput,
+    div.stSelectbox,
+    div.stCheckbox,
+    div.stDataFrame,
+    div.stExpander,
+    div[data-testid="stMetric"],
+    div[data-testid="stMetricWidget"],
+    div[data-testid="stBlock"] {
         display: none !important;
     }
+    
+    /* 2. Ocultar títulos y textos de la app externa */
+    h1, h2, h3:not(#seccion-ticket h3), p:not(#seccion-ticket p) {
+        display: none !important;
+    }
+    
+    /* 3. Forzar al ticket a ocupar el espacio completo de la hoja limpia */
     #seccion-ticket {
-        position: fixed !important;
+        position: absolute !important;
         top: 0 !important;
         left: 0 !important;
         width: 100% !important;
-        height: auto !important;
-        background-color: white !important;
-        z-index: 9999999 !important;
+        max-width: 100% !important;
         border: none !important;
         box-shadow: none !important;
         margin: 0 !important;
-        padding: 0 !important;
+        padding: 10px !important;
+        background-color: white !important;
+        color: black !important;
+        display: block !important;
     }
 }
 </style>
@@ -134,23 +156,22 @@ if st.session_state.mostrar_resultados:
     fecha_actual = datetime.now().strftime("%Y-%m-%d %H:%M")
     nombre_ticket = nombre_usuario.strip() if nombre_usuario.strip() else "No especificado"
 
-    # CRÍTICO: Este bloque HTML se movió al extremo izquierdo para evitar el bug de interpretación de Markdown
     ticket_html = f"""
 <div id="seccion-ticket" style="font-family: Arial, sans-serif; max-width: 450px; margin: 15px auto; padding: 20px; border: 1px dashed #bbb; border-radius: 8px; background-color: #ffffff; color: #000000; box-shadow: 0px 2px 5px rgba(0,0,0,0.05);">
-    <h3 style="text-align: center; margin: 0 0 5px 0; font-size: 18px; color: #000;">TICKET DE ADUANA PRO</h3>
+    <h3 style="text-align: center; margin: 0 0 5px 0; font-size: 18px; color: #000; font-weight: bold;">TICKET DE ADUANA PRO</h3>
     <p style="text-align: center; margin: 0 0 15px 0; font-size: 11px; color: #666;">{fecha_actual}</p>
     <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
-    <p style="margin: 5px 0; font-size: 13px;"><b>Pasajero/Familia:</b> {nombre_ticket}</p>
-    <p style="margin: 5px 0; font-size: 13px;"><b>Pasajeros en Grupo:</b> {num_pasajeros}</p>
-    <p style="margin: 5px 0; font-size: 13px;"><b>Vía de Entrada:</b> {via}</p>
-    <p style="margin: 5px 0; font-size: 13px;"><b>Tipo de Cambio:</b> ${tipo_cambio:.2f} MXN</p>
+    <p style="margin: 5px 0; font-size: 13px; color: #000;"><b>Pasajero/Familia:</b> {nombre_ticket}</p>
+    <p style="margin: 5px 0; font-size: 13px; color: #000;"><b>Pasajeros en Grupo:</b> {num_pasajeros}</p>
+    <p style="margin: 5px 0; font-size: 13px; color: #000;"><b>Vía de Entrada:</b> {via}</p>
+    <p style="margin: 5px 0; font-size: 13px; color: #000;"><b>Tipo de Cambio:</b> ${tipo_cambio:.2f} MXN</p>
     <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
-    <h4 style="margin: 0 0 5px 0; font-size: 13px;">DESGLOSE DE MERCANCÍA:</h4>
-    <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+    <h4 style="margin: 0 0 5px 0; font-size: 13px; color: #000; font-weight: bold;">DESGLOSE DE MERCANCÍA:</h4>
+    <table style="width: 100%; font-size: 13px; border-collapse: collapse; color: #000;">
         {html_filas_articulos}
     </table>
     <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
-    <table style="width: 100%; font-size: 13px; line-height: 1.6;">
+    <table style="width: 100%; font-size: 13px; line-height: 1.6; color: #000;">
         <tr><td>Suma Total Artículos:</td><td style="text-align: right;">${valor_total_usd:,.2f} USD</td></tr>
         <tr><td>Franquicia Individual:</td><td style="text-align: right;">${res['Franquicia_Individual']:.2f} USD</td></tr>
         <tr><td><b>Franquicia Total ({num_pasajeros} pax):</b></td><td style="text-align: right;"><b>-${res['Franquicia_Total']:.2f} USD</b></td></tr>
@@ -162,13 +183,13 @@ if st.session_state.mostrar_resultados:
         </tr>
     </table>
     <div style="border-top: 1px dashed #000; margin: 15px 0 5px 0;"></div>
-    <p style="font-size: 11px; text-align: center; margin: 0; font-style: italic; color: #444;">{res['Mensaje']}</p>
+    <p style="font-size: 11px; text-align: center; margin: 0; font-style: italic; color: #222;">{res['Mensaje']}</p>
 </div>
 """
     
     st.markdown(ticket_html, unsafe_allow_html=True)
     
-    # Bloque de respaldo para descarga en TXT
+    # Texto plano de respaldo
     texto_ticket_txt = (
         f"========================================\n"
         f"          TICKET DE ADUANA PRO          \n"
