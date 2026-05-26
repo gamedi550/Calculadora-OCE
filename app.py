@@ -47,13 +47,12 @@ def calcular_impuestos_equipaje(valor_total_usd, via_entrada, tipo_de_cambio, ta
     }
 
 # --- CONFIGURACIÓN DE LA INTERFAZ MÓVIL ---
-st.set_page_config(page_title="Aduana Pro", page_icon="🧳", layout="centered")
+st.set_page_config(page_title="Aduana Ciudad Juárez", page_icon="🧳", layout="centered")
 
-# REGLAS DE IMPRESIÓN ULTRA ESTRICTAS: Oculta por completo los componentes nativos de Streamlit
+# REGLAS DE IMPRESIÓN ULTRA ESTRICTAS
 st.markdown("""
 <style>
 @media print {
-    /* 1. Ocultar absolutamente todos los elementos de captura y botones */
     [data-testid="stHeader"], 
     footer, 
     hr,
@@ -71,12 +70,10 @@ st.markdown("""
         display: none !important;
     }
     
-    /* 2. Ocultar títulos y textos de la app externa */
     h1, h2, h3:not(#seccion-ticket h3), p:not(#seccion-ticket p) {
         display: none !important;
     }
     
-    /* 3. Forzar al ticket a ocupar el espacio completo de la hoja limpia */
     #seccion-ticket {
         position: absolute !important;
         top: 0 !important;
@@ -95,7 +92,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🧳 Aduana Pro")
+st.title("🧳 Aduana Ciudad Juárez")
 st.write("Calculadora de equipaje familiar con franquicia acumulada.")
 
 # --- 1. CONFIGURACIÓN AVANZADA ---
@@ -158,7 +155,7 @@ if st.session_state.mostrar_resultados:
 
     ticket_html = f"""
 <div id="seccion-ticket" style="font-family: Arial, sans-serif; max-width: 450px; margin: 15px auto; padding: 20px; border: 1px dashed #bbb; border-radius: 8px; background-color: #ffffff; color: #000000; box-shadow: 0px 2px 5px rgba(0,0,0,0.05);">
-    <h3 style="text-align: center; margin: 0 0 5px 0; font-size: 18px; color: #000; font-weight: bold;">TICKET DE ADUANA PRO</h3>
+    <h3 style="text-align: center; margin: 0 0 5px 0; font-size: 18px; color: #000; font-weight: bold;">TICKET ADUANA CIUDAD JUÁREZ</h3>
     <p style="text-align: center; margin: 0 0 15px 0; font-size: 11px; color: #666;">{fecha_actual}</p>
     <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
     <p style="margin: 5px 0; font-size: 13px; color: #000;"><b>Pasajero/Familia:</b> {nombre_ticket}</p>
@@ -189,10 +186,10 @@ if st.session_state.mostrar_resultados:
     
     st.markdown(ticket_html, unsafe_allow_html=True)
     
-    # Texto plano de respaldo
+    # Texto plano de respaldo para descarga
     texto_ticket_txt = (
         f"========================================\n"
-        f"          TICKET DE ADUANA PRO          \n"
+        f"     TICKET ADUANA CIUDAD JUÁREZ        \n"
         f"========================================\n"
         f"Fecha: {fecha_actual}\n"
         f"Pasajero/Familia: {nombre_ticket}\n"
