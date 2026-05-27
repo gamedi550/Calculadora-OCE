@@ -19,12 +19,9 @@ def obtener_tipo_cambio_real():
     except Exception as e:
         return 20.00
 
-def calcular_impuestos_equipaje(valor_total_usd, via_entrada, tipo_de_cambio, tasa_global_pct, num_pasajeros, es_periodo_paisano=False):
-    if via_entrada == "Aérea / Marítima":
-        franquicia_individual = 500.0
-    else:
-        franquicia_individual = 500.0 if es_periodo_paisano else 300.0
-    
+def calcular_impuestos_equipaje(valor_total_usd, via_entrada, tipo_de_cambio, tasa_global_pct, num_pasajeros):
+    # Franquicia fijada permanentemente a $500 USD por pasajero
+    franquicia_individual = 500.0
     franquicia_total_usd = franquicia_individual * num_pasajeros
     
     if valor_total_usd <= franquicia_total_usd:
@@ -102,9 +99,7 @@ with st.sidebar:
     with st.expander("💵 Reglas de Franquicia", expanded=False):
         st.markdown("""
         La franquicia aplica para mercancías nuevas adicionales a tu equipaje personal:
-        * **Vía Aérea o Marítima:** $500 USD por persona todo el año.
-        * **Vía Terrestre:** $300 USD por persona.
-        * **Programa Héroes Paisanos:** Sube de forma temporal a **$500 USD** por vía terrestre solo en los periodos vacacionales oficiales establecidos por el INM.
+        * **Franquicia General:** $500 USD por persona de forma fija durante todo el año, sin importar la vía de ingreso (Aérea, Marítima o Terrestre).
         
         👨‍👩‍👧‍👦 **Acumulación Familiar:** Las franquicias de una misma familia son **acumulables** si viajan juntos, llegan al mismo tiempo y en el mismo medio de transporte.
         """)
@@ -165,7 +160,7 @@ if "lista_articulos" not in st.session_state:
         {"Artículo": "Aparatos electrónicos portátiles", "Precio (USD)": 0.0}
     ], index=[1, 2, 3, 4, 5, 6])
 
-df_articulos = st.data_editor(
+st.session_state.lista_articulos = st.data_editor(
     st.session_state.lista_articulos,
     num_rows="fixed",  
     use_container_width=True,
@@ -177,6 +172,7 @@ df_articulos = st.data_editor(
     }
 )
 
+df_articulos = st.session_state.lista_articulos
 valor_total_usd = df_articulos["Precio (USD)"].sum() if not df_articulos.empty else 0.0
 st.metric(label="Valor Total de tu Compra", value=f"${valor_total_usd:,.2f} USD")
 
@@ -189,7 +185,6 @@ num_pasajeros = st.number_input("Número de pasajeros viajando juntos", min_valu
 
 via_defecto = ["Terrestre", "Aérea / Marítima"] if "AICM" not in ciudad_seleccionada and "Cancún" not in ciudad_seleccionada else ["Aérea / Marítima", "Terrestre"]
 via = st.selectbox("¿Cómo ingresas al país?", via_defecto)
-paisano = st.toggle("¿Aplica Programa Paisano?") if via == "Terrestre" else False
 
 st.divider()
 
@@ -202,7 +197,7 @@ if st.button("Calcular Impuestos Totales", type="primary", use_container_width=T
 
 # --- 5. RESULTADOS E IMPRESIÓN ---
 if st.session_state.mostrar_resultados:
-    res = calcular_impuestos_equipaje(valor_total_usd, via, tipo_cambio, tasa_impuesto, num_pasajeros, paisano)
+    res = calcular_impuestos_equipaje(valor_total_usd, via, tipo_cambio, tasa_impuesto, num_pasajeros)
     
     st.subheader("📋 Resultado del Cálculo")
     
@@ -296,8 +291,6 @@ if st.session_state.mostrar_resultados:
 </body>
 </html>"""
 
-    b64_html = base64.b64encode(html_impresion_completo.encode('utf-8')).decode('utf-8')
-
     # Texto plano alternativo (.txt)
     texto_ticket_txt = (
         f"========================================\n"
@@ -343,36 +336,10 @@ if st.session_state.mostrar_resultados:
         )
         
     with col2:
-        components.html(f"""
-            <script>
-                function abrirTicketMovil() {{
-                    var b64Data = "{b64_html}";
-                    var strData = atob(b64Data);
-                    var charCodeArray = new Uint8Array(strData.length);
-                    for (var i = 0; i < strData.length; i++) {{
-                        charCodeArray[i] = strData.charCodeAt(i);
-                    }}
-                    var htmlDecodificado = new TextDecoder("utf-8").decode(charCodeArray);
-                    
-                    var ventanaImpresion = window.open('', '_blank');
-                    if(ventanaImpresion) {{
-                        ventanaImpresion.document.write(htmlDecodificado);
-                        ventanaImpresion.document.close();
-                    }} else {{
-                        alert("Por favor, permite las ventanas emergentes (pop-ups) en tu navegador para ver el ticket.");
-                    }}
-                }}
-            </script>
-            <button onclick="abrirTicketMovil()" style="
-                width: 100%; 
-                height: 38px; 
-                background-color: #4CAF50; 
-                color: white; 
-                border: none; 
-                border-radius: 4px; 
-                font-weight: bold; 
-                font-size: 14px;
-                cursor: pointer;">
-                🖨️ Imprimir / Guardar PDF
-            </button>
-        """, height=45)
+        st.download_button(
+            label="🖨️ Guardar Ticket HTML",
+            data=html_impresion_completo,
+            file_name=f"Ticket_Aduana_{nombre_archivo}.html",
+            mime="text/html",
+            use_container_width=True
+        )
