@@ -20,7 +20,7 @@ def obtener_tipo_cambio_real():
         return 20.00
 
 def calcular_impuestos_equipaje(valor_total_usd, df_extras, tipo_de_cambio, tasa_global_pct, num_pasajeros):
-    # 1. CÁLCULO DE MERCANCÍA GENERAL (CON FRANQUICIA)
+    # 1. CÁLCULO DE MERCANCÍA GENERAL (APLICA FRANQUICIA)
     franquicia_individual = 500.0
     franquicia_total_usd = franquicia_individual * num_pasajeros
     
@@ -33,15 +33,16 @@ def calcular_impuestos_equipaje(valor_total_usd, df_extras, tipo_de_cambio, tasa
     impuesto_general_mxn = impuesto_general_usd * tipo_de_cambio
     excedente_mxn = excedente_usd * tipo_de_cambio
     
-    # 2. CÁLCULO DE EXTRAS (SIN FRANQUICIA, TASA INDIVIDUAL)
+    # 2. CÁLCULO DE EXTRAS (NO APLICA FRANQUICIA - TASA DIRECTA)
     impuesto_extras_mxn = 0.0
     valor_extras_usd = 0.0
     
     if df_extras is not None and not df_extras.empty:
         valor_extras_usd = df_extras["Precio (USD)"].sum()
-        # Calcular impuesto fila por fila según su tasa específica
-        df_extras["Impuesto_USD"] = df_extras["Precio (USD)"] * (df_extras["Tasa (%)"] / 100.0)
-        impuesto_extras_mxn = df_extras["Impuesto_USD"].sum() * tipo_de_cambio
+        # Copia local para evitar alertas de asignación en Pandas
+        df_calc_extras = df_extras.copy()
+        df_calc_extras["Impuesto_USD"] = df_calc_extras["Precio (USD)"] * (df_calc_extras["Tasa (%)"] / 100.0)
+        impuesto_extras_mxn = df_calc_extras["Impuesto_USD"].sum() * tipo_de_cambio
 
     # 3. CONSOLIDACIÓN TOTAL
     total_impuesto_mxn = impuesto_general_mxn + impuesto_extras_mxn
@@ -50,7 +51,7 @@ def calcular_impuestos_equipaje(valor_total_usd, df_extras, tipo_de_cambio, tasa
     if total_impuesto_mxn > 0:
         estatus = "Requiere Pago" if not alerta_limite else "Excede Límite"
 
-    mensaje = "✅ ¡Excelente! Todo entra dentro de la franquicia o no hay excedentes." if total_impuesto_mxn == 0 else "👍 Cálculo listo para pagar en la caja de la aduana."
+    mensaje = "✅ ¡Excelente! La mercancía entra dentro de la franquicia acumulada de tu grupo." if total_impuesto_mxn == 0 else "👍 Cálculo listo para pagar en la caja de la aduana."
     if alerta_limite:
         mensaje = "⚠️ ¡Atención! El excedente general supera los $3,000 USD. La aduana podría exigirte un Agente Aduanal."
 
@@ -99,240 +100,20 @@ with st.sidebar:
         * **Libros, revistas** y documentos impresos de uso personal.
         * **Medicamentos** de uso personal (con receta médica si contienen sustancias psicotrópicos).
         * **Maletas, baúles** o bolsas necesarios para el traslado del equipaje.
+        * **Otros:** 2 instrumentos musicales portátiles, equipo deportivo personal, artículos de bebé (carriola, cuna portátil) y herramientas manuales básicas.
+        * **Mascotas:** Hasta 3 perros o gatos con su documentación sanitaria.
         """)
         
     with st.expander("💵 Reglas de Franquicia", expanded=False):
         st.markdown("""
         La franquicia aplica para mercancías nuevas adicionales a tu equipaje personal:
-        * **Franquicia General:** $500 USD por persona de forma fija durante todo el año, sin importar la vía de ingreso.
-        👨‍👩‍👧‍👦 **Acumulación Familiar:** Las franquicias de una misma familia son **acumulables** si viajan juntos.
+        * **Franquicia General:** $500 USD por persona de forma fija durante todo el año, sin importar la vía de ingreso (Aérea, Marítima o Terrestre).
+        
+        👨‍👩‍👧‍👦 **Acumulación Familiar:** Las franquicias de una misma familia son **acumulables** si viajan juntos, llegan al mismo tiempo y en el mismo medio de transporte.
         """)
         
     with st.expander("⚠️ Límites de Alcohol, Tabaco y Restricciones", expanded=False):
         st.markdown("""
-        Los pasajeros **mayores de 18 años** pueden ingresar libre de impuestos únicamente hasta:
-        * **Alcohol / Licores:** Hasta 3 litros.
-        * **Vino:** Hasta 6 litros.
-        * **Tabaco:** 20 cajetillas, 25 puros o 200g de tabaco.
-        
-        ⛔ **IMPORTANTE:** Si excedes estas cantidades permitidas por persona, el excedente **NO puede meterse a la franquicia general**. Se deben declarar y pagar tasas especiales (IEPS + IVA) calculadas en la sección de Extras.
-        """)
-        
-    st.divider()
-    st.markdown("### 🔗 Enlaces Oficiales")
-    st.markdown("[📜 Portal de Aduanas - SAT](https://www.sat.gob.mx/)")
-
-# ==========================================
-# --- CONTENIDO PRINCIPAL DE LA APP ---
-# ==========================================
-
-st.subheader("📍 Ubicación de Ingreso")
-ciudad_seleccionada = st.selectbox("Selecciona la aduana donde te encuentras:", list(CIUDADES_ADUANA.keys()), index=0)
-
-st.title(f"🧳 Aduana {ciudad_seleccionada}")
-st.write("Calculadora de equipaje familiar con franquicia acumulada y sección de licores/tabacos.")
-
-# --- 1. CONFIGURACIÓN AVANZADA ---
-with st.expander("⚙️ Configuración de Tasas e Impuestos", expanded=False):
-    tasa_impuesto = st.number_input("Tasa Global de Impuesto General (%)", min_value=0.0, max_value=100.0, value=16.0, step=0.5)
-    tipo_cambio_del_dia = obtener_tipo_cambio_real()
-    tipo_cambio = st.number_input("Tipo de cambio (MXN por USD)", min_value=1.0, step=0.05, value=tipo_cambio_del_dia)
-    st.caption(f"💡 Tipo de cambio oficial actualizado automáticamente: **${tipo_cambio_del_dia} MXN**")
-
-st.divider()
-
-# --- 2. CALCULADORA INTERACTIVA DE ARTÍCULOS GENERALES ---
-st.subheader("🔢 1. Artículos Generales (Afectan Franquicia)")
-
-if "lista_articulos" not in st.session_state:
-    st.session_state.lista_articulos = pd.DataFrame([
-        {"Artículo": "Ropa y Calzado excedente", "Precio (USD)": 0.0},
-        {"Artículo": "Electrodomésticos", "Precio (USD)": 0.0},
-        {"Artículo": "Muebles y Hogar", "Precio (USD)": 0.0},
-        {"Artículo": "Herramientas", "Precio (USD)": 0.0},
-        {"Artículo": "Productos alimenticios", "Precio (USD)": 0.0},
-        {"Artículo": "Aparatos electrónicos", "Precio (USD)": 0.0}
-    ], index=[1, 2, 3, 4, 5, 6])
-
-st.session_state.lista_articulos = st.data_editor(
-    st.session_state.lista_articulos,
-    num_rows="fixed",  
-    use_container_width=True,
-    key="editor_articulos",
-    disabled=["Artículo"], 
-    column_config={
-        "Artículo": st.column_config.TextColumn("Descripción General"),
-        "Precio (USD)": st.column_config.NumberColumn("Valor ($ USD)", min_value=0.0, format="$%.2f", required=True)
-    }
-)
-valor_total_usd = st.session_state.lista_articulos["Precio (USD)"].sum()
-
-# --- 3. CALCULADORA INTERACTIVA DE EXTRAS (TASAS INDIVIDUALES) ---
-st.subheader("🍾 2. Excedentes de Alcohol, Vino y Tabaco (Tasa Fija Directa)")
-st.caption("Nota: Estos artículos pagan impuesto directo desde el primer dólar excedente según la normatividad aduanera.")
-
-if "lista_extras" not in st.session_state:
-    # Tasas aproximadas oficiales (SAT simplificado con IEPS integrado para pasajeros)
-    st.session_state.lista_extras = pd.DataFrame([
-        {"Categoría": "Bebidas Alcohólicas / Licores (>20°)", "Precio (USD)": 0.0, "Tasa (%)": 90.0},
-        {"Categoría": "Vino / Cerveza (<14°)", "Precio (USD)": 0.0, "Tasa (%)": 75.0},
-        {"Categoría": "Tabacos / Cigarros / Puros", "Precio (USD)": 0.0, "Tasa (%)": 350.0}
-    ], index=[1, 2, 3])
-
-st.session_state.lista_extras = st.data_editor(
-    st.session_state.lista_extras,
-    num_rows="fixed",
-    use_container_width=True,
-    key="editor_extras",
-    disabled=["Categoría"],
-    column_config={
-        "Categoría": st.column_config.TextColumn("Tipo de Producto"),
-        "Precio (USD)": st.column_config.NumberColumn("Valor Excedente ($ USD)", min_value=0.0, format="$%.2f", required=True),
-        "Tasa (%)": st.column_config.NumberColumn("Tasa Impuesto SAT", format="%d%%", disabled=False) # Editable por si cambia la ley
-    }
-)
-valor_extras_usd = st.session_state.lista_extras["Precio (USD)"].sum()
-
-# Métricas combinadas de entrada
-col_m1, col_m2 = st.columns(2)
-with col_m1:
-    st.metric(label="Total Mercancía General", value=f"${valor_total_usd:,.2f} USD")
-with col_m2:
-    st.metric(label="Total Bebidas y Tabaco", value=f"${valor_extras_usd:,.2f} USD")
-
-st.divider()
-
-# --- 4. DATOS DEL VIAJE Y PASAJEROS ---
-st.subheader("📋 Datos del Viajero / Grupo")
-nombre_usuario = st.text_input("Nombre del Pasajero / Familia", value="", placeholder="Ej. Familia Pérez")
-num_pasajeros = st.number_input("Número de pasajeros viajando juntos", min_value=1, max_value=20, value=1, step=1)
-via_defecto = ["Terrestre", "Aérea / Marítima"] if "AICM" not in ciudad_seleccionada and "Cancún" not in ciudad_seleccionada else ["Aérea / Marítima", "Terrestre"]
-via = st.selectbox("¿Cómo ingresas al país?", via_defecto)
-
-st.divider()
-
-# --- 5. CONTROL DE EJECUCIÓN ---
-if "mostrar_resultados" not in st.session_state:
-    st.session_state.mostrar_resultados = False
-
-if st.button("Calcular Impuestos Totales", type="primary", use_container_width=True):
-    st.session_state.mostrar_resultados = True
-
-# --- 6. RESULTADOS E IMPRESIÓN ---
-if st.session_state.mostrar_resultados:
-    res = calcular_impuestos_equipaje(valor_total_usd, st.session_state.lista_extras, tipo_change:=tipo_cambio, tasa_impuesto, num_pasajeros)
-    
-    st.subheader("📋 Resultado del Cálculo")
-    
-    # Renderizado filas de artículos generales
-    articulos_con_valor = st.session_state.lista_articulos[st.session_state.lista_articulos["Precio (USD)"] > 0]
-    html_filas_articulos = ""
-    if not articulos_con_valor.empty:
-        for idx, fila in articulos_con_valor.iterrows():
-            html_filas_articulos += f"<tr><td style='padding: 4px 0;'>• {fila['Artículo']}</td><td style='text-align: right; padding: 4px 0;'>${fila['Precio (USD)']:,.2f} USD</td></tr>"
-    else:
-        html_filas_articulos = "<tr><td colspan='2' style='font-style: italic; color: #888;'>Sin artículos declarados</td></tr>"
-
-    # Renderizado filas de artículos extras
-    extras_con_valor = st.session_state.lista_extras[st.session_state.lista_extras["Precio (USD)"] > 0]
-    html_filas_extras = ""
-    if not extras_con_valor.empty:
-        for idx, fila in extras_con_valor.iterrows():
-            html_filas_extras += f"<tr><td style='padding: 4px 0;'>🍾 {fila['Categoría']} (<small>{fila['Tasa (%)']}%</small>)</td><td style='text-align: right; padding: 4px 0;'>${fila['Precio (USD)']:,.2f} USD</td></tr>"
-    else:
-        html_filas_extras = "<tr><td colspan='2' style='font-style: italic; color: #888;'>Sin excedentes de alcohol/tabaco</td></tr>"
-
-    zona_horaria_objeto = pytz.timezone(CIUDADES_ADUANA[ciudad_seleccionada])
-    fecha_actual = datetime.now(zona_horaria_objeto).strftime("%Y-%m-%d %H:%M")
-    nombre_ticket = nombre_usuario.strip() if nombre_usuario.strip() else "No especificado"
-
-    texto_para_qr = (
-        f"ADUANA {ciudad_seleccionada.upper()}\n"
-        f"Pasajero: {nombre_ticket}\n"
-        f"Gral: ${valor_total_usd:.2f} USD | Extras: ${res['Valor_Extras_USD']:.2f} USD\n"
-        f"TOTAL A PAGAR: ${res['Impuesto_Total_MXN']:,.2f} MXN"
-    )
-    qr_url_encoded = urllib.parse.quote(texto_para_qr)
-    qr_image_url = f"https://api.qrserver.com/v1/create-qr-code/?size=130x130&data={qr_url_encoded}"
-
-    ticket_html = f"""<div id="seccion-ticket" style="font-family: Arial, sans-serif; max-width: 450px; margin: 15px auto; padding: 20px; border: 1px dashed #bbb; border-radius: 8px; background-color: #ffffff; color: #000000; box-shadow: 0px 2px 5px rgba(0,0,0,0.05);">
-<h3 style="text-align: center; margin: 0 0 5px 0; font-size: 16px; color: #000; font-weight: bold;">TICKET ADUANA {ciudad_seleccionada.upper()}</h3>
-<p style="text-align: center; margin: 0 0 15px 0; font-size: 11px; color: #666;">{fecha_actual}</p>
-<div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
-<p style="margin: 5px 0; font-size: 13px; color: #000;"><b>Pasajero/Familia:</b> {nombre_ticket}</p>
-<p style="margin: 5px 0; font-size: 13px; color: #000;"><b>Pasajeros en Grupo:</b> {num_pasajeros}</p>
-<p style="margin: 5px 0; font-size: 13px; color: #000;"><b>Tipo de Cambio:</b> ${tipo_cambio:.2f} MXN</p>
-<div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
-
-<h4 style="margin: 0 0 5px 0; font-size: 13px; color: #000; font-weight: bold;">MERCANCÍA GENERAL:</h4>
-<table style="width: 100%; font-size: 12px; border-collapse: collapse; color: #000; margin-bottom: 5px;">
-{html_filas_articulos}
-</table>
-
-<h4 style="margin: 10px 0 5px 0; font-size: 13px; color: #000; font-weight: bold;">EXCEDENTES ALCOHOL / TABACO:</h4>
-<table style="width: 100%; font-size: 12px; border-collapse: collapse; color: #000;">
-{html_filas_extras}
-</table>
-
-<div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
-<table style="width: 100%; font-size: 13px; line-height: 1.5; color: #000;">
-<tr><td>Suma General:</td><td style="text-align: right;">${valor_total_usd:,.2f} USD</td></tr>
-<tr><td>Franquicia Acumulada:</td><td style="text-align: right;">-${res['Franquicia_Total']:.2f} USD</td></tr>
-<tr><td>Excedente Gravable:</td><td style="text-align: right;">${res['Excedente_USD']:,.2f} USD</td></tr>
-<tr><td>Impuesto General ({res['Tasa_General']}):</td><td style="text-align: right; color:#555;">${res['Impuesto_General_MXN']:,.2f} MXN</td></tr>
-<tr style="border-bottom: 1px dotted #ccc;"><td>Impuesto Especial Extras:</td><td style="text-align: right; color:#555;">${res['Impuesto_Extras_MXN']:,.2f} MXN</td></tr>
-
-<tr style="font-size: 16px; font-weight: bold; border-top: 1px solid #000;">
-<td style="padding-top: 8px; color: #000;">TOTAL A PAGAR:</td>
-<td style="text-align: right; padding-top: 8px; color: #000;">${res['Impuesto_Total_MXN']:,.2f} MXN</td>
-</tr>
-</table>
-<div style="text-align: center; margin: 20px 0 10px 0;">
-<img src="{qr_image_url}" alt="Código QR de Validación" style="border: 1px solid #ddd; padding: 5px; background-color: #fff; width: 130px; height: 130px;" />
-<p style="margin: 5px 0 0 0; font-size: 10px; color: #444; font-style: italic;">Escanea para validar el desglose</p>
-</div>
-<div style="border-top: 1px dashed #000; margin: 10px 0 5px 0;"></div>
-<p style="font-size: 11px; text-align: center; margin: 0; font-style: italic; color: #222;">{res['Mensaje']}</p>
-</div>"""
-    
-    st.markdown(ticket_html, unsafe_allow_html=True)
-    
-    # --- PROCESAMIENTO MÓVIL ---
-    html_impresion_completo = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Imprimir Ticket</title><style>body {{ background-color: #f3f4f6; margin: 0; padding: 10px; font-family: Arial, sans-serif; }}.btn-imprimir {{ display: block; width: 100%; max-width: 450px; margin: 10px auto; padding: 12px; background-color: #4CAF50; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 16px; text-align: center; cursor: pointer; }}@media print {{ .no-print {{ display: none !important; }} body {{ background-color: white; padding: 0; margin: 0; }} #seccion-ticket {{ border: none !important; box-shadow: none !important; margin: 0 !important; padding: 0 !important; }} }}</style></head><body><button class="btn-imprimir no-print" onclick="window.print()">📥 CLIC AQUÍ PARA IMPRIMIR O GUARDAR PDF</button>{ticket_html}<script>window.onload = function() {{ setTimeout(function() {{ window.print(); }}, 500); }};</script></body></html>"""
-
-    # Texto plano alternativo (.txt)
-    texto_ticket_txt = (
-        f"========================================\n"
-        f"     TICKET ADUANA {ciudad_seleccionada.upper()}\n"
-        f"========================================\n"
-        f"Fecha local: {fecha_actual}\n"
-        f"Pasajero/Familia: {nombre_ticket}\n"
-        f"Tipo de Cambio: ${tipo_cambio:.2f} MXN\n"
-        f"----------------------------------------\n"
-        f"MERCANCÍA GENERAL Y EXCEDENTES:\n"
-    )
-    if not articulos_con_valor.empty:
-        for idx, fila in articulos_con_valor.iterrows():
-            texto_ticket_txt += f"- {fila['Artículo']}: ${fila['Precio (USD)']:,.2f} USD\n"
-    if not extras_con_valor.empty:
-        for idx, fila in extras_con_valor.iterrows():
-            texto_ticket_txt += f"- [EXTRA] {fila['Categoría']} ({fila['Tasa (%)']}%): ${fila['Precio (USD)']:,.2f} USD\n"
-        
-    texto_ticket_txt += (
-        f"----------------------------------------\n"
-        f"Suma General:         ${valor_total_usd:,.2f} USD\n"
-        f"Franquicia Total:     -${res['Franquicia_Total']:.2f} USD\n"
-        f"Impuesto Gral calculado: ${res['Impuesto_General_MXN']:,.2f} MXN\n"
-        f"Impuesto Extras calculated: ${res['Impuesto_Extras_MXN']:,.2f} MXN\n"
-        f"----------------------------------------\n"
-        f"TOTAL A PAGAR:        ${res['Impuesto_Total_MXN']:,.2f} MXN\n"
-        f"========================================\n"
-    )
-    
-    st.subheader("🖨️ Exportar o Imprimir")
-    col1, col2 = st.columns(2)
-    with col1:
-        nombre_archivo = nombre_usuario.replace(" ", "_") if nombre_usuario.strip() else "Pasajero"
-        st.download_button(label="📥 Descargar (.txt)", data=texto_ticket_txt, file_name=f"Desglose_{nombre_archivo}.txt", mime="text/plain", use_container_width=True)
-    with col2:
-        st.download_button(label="🖨️ Guardar Ticket HTML", data=html_impresion_completo, file_name=f"Ticket_Aduana_{nombre_archivo}.html", mime="text/html", use_container_width=True)
+        Los pasajeros **mayores de 18 años** pueden ingresar libre de impuestos únicamente las siguientes cantidades:
+        * **Alcohol (licores y bebidas alcohólicas):** Hasta 3 litros.
+        *
